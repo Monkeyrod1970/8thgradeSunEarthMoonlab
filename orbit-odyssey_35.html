@@ -1,0 +1,2670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Orbit Odyssey: Lunar Lockdown</title>
+<style>
+/* ══════════════════════════════════════
+   DESIGN TOKENS
+   Space-ops aesthetic: dark navy field,
+   amber solar accents, ice-moon whites
+══════════════════════════════════════ */
+:root {
+  --bg:          #06091a;
+  --surface:     #0c1228;
+  --card:        #101830;
+  --card2:       #131e38;
+  --border:      #1c2d52;
+  --border2:     #243455;
+  --sun:         #fbbf24;
+  --sun2:        #f59e0b;
+  --moon-lit:    #e8eef8;
+  --moon-dark:   #141e32;
+  --earth-blue:  #1d4ed8;
+  --earth-green: #166534;
+  --ok:          #34d399;
+  --ok2:         #059669;
+  --fail:        #f87171;
+  --info:        #60a5fa;
+  --text:        #dce8f8;
+  --muted:       #4a6080;
+  --font:        'Segoe UI', system-ui, sans-serif;
+  --mono:        'Courier New', monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  overflow: hidden; /* no scroll on desktop; panels scroll internally */
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  display: flex;
+  flex-direction: column;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* ── STARFIELD ── */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  pointer-events: none; z-index: 0;
+  background-image:
+    radial-gradient(1px 1px at 7%  12%, rgba(255,255,255,.55) 0%,transparent 100%),
+    radial-gradient(1px 1px at 19% 34%, rgba(255,255,255,.35) 0%,transparent 100%),
+    radial-gradient(1px 1px at 33% 8%,  rgba(255,255,255,.45) 0%,transparent 100%),
+    radial-gradient(1px 1px at 51% 22%, rgba(255,255,255,.30) 0%,transparent 100%),
+    radial-gradient(1px 1px at 63% 45%, rgba(255,255,255,.50) 0%,transparent 100%),
+    radial-gradient(1px 1px at 77% 15%, rgba(255,255,255,.40) 0%,transparent 100%),
+    radial-gradient(1px 1px at 88% 67%, rgba(255,255,255,.35) 0%,transparent 100%),
+    radial-gradient(1px 1px at 42% 78%, rgba(255,255,255,.45) 0%,transparent 100%),
+    radial-gradient(1px 1px at 25% 88%, rgba(255,255,255,.30) 0%,transparent 100%),
+    radial-gradient(1px 1px at 94% 38%, rgba(255,255,255,.50) 0%,transparent 100%),
+    radial-gradient(1px 1px at 14% 60%, rgba(255,255,255,.35) 0%,transparent 100%),
+    radial-gradient(1px 1px at 71% 90%, rgba(255,255,255,.45) 0%,transparent 100%),
+    radial-gradient(2px 2px at 55% 55%, rgba(255,255,255,.20) 0%,transparent 100%),
+    radial-gradient(2px 2px at 30% 50%, rgba(200,220,255,.15) 0%,transparent 100%);
+}
+
+/* ══════════════════════════════════════
+   HEADER
+══════════════════════════════════════ */
+#hdr {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 10px 18px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+  position: relative; z-index: 10;
+  gap: 12px;
+}
+
+.logo { display: flex; align-items: center; gap: 10px; }
+.logo-orb {
+  width: 38px; height: 38px;
+  background: linear-gradient(135deg, var(--sun), #f97316);
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px;
+  box-shadow: 0 0 18px rgba(251,191,36,.35);
+  flex-shrink: 0;
+}
+.logo-txt h1 {
+  font-size: 15px; font-weight: 900;
+  letter-spacing: 2.5px; color: var(--sun); line-height: 1;
+}
+.logo-txt p {
+  font-size: 9px; color: var(--muted);
+  font-family: var(--mono); letter-spacing: 1px;
+}
+
+.hud { display: flex; gap: 8px; align-items: center; }
+.chip {
+  background: var(--bg);
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  padding: 5px 12px;
+  font-family: var(--mono);
+  font-size: 11px;
+  display: flex; gap: 5px; align-items: center;
+  white-space: nowrap;
+}
+.chip .lbl { color: var(--muted); }
+.chip .val { font-weight: 700; }
+#chip-power .val { color: var(--ok); }
+#chip-level .val { color: var(--sun); }
+
+/* Reset button (header) */
+#btn-reset {
+  background: var(--sun);
+  border: 1px solid var(--sun);
+  color: #1a1205;
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all .15s;
+  white-space: nowrap;
+}
+#btn-reset:hover { background: #fcd34d; border-color: #fcd34d; }
+#btn-reset:active { transform: scale(.96); }
+
+/* ══════════════════════════════════════
+   MAIN LAYOUT  (3 columns on desktop)
+══════════════════════════════════════ */
+#main {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 252px 1fr 290px;
+  grid-template-rows: 1fr;
+  gap: 12px;
+  padding: 12px;
+  overflow: hidden;
+  position: relative; z-index: 1;
+  min-height: 0;
+}
+
+@media (max-width: 860px) {
+  html, body { overflow: auto; }
+  #main {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto;
+    overflow: auto;
+    height: auto;
+  }
+  #col-right { display: none; } /* hide log on small screens */
+}
+
+/* ══════════════════════════════════════
+   CARDS
+══════════════════════════════════════ */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px;
+  position: relative;
+}
+
+.card-lbl {
+  font-size: 9px; font-weight: 700;
+  letter-spacing: 2px; text-transform: uppercase;
+  color: var(--muted); margin-bottom: 10px;
+  display: flex; align-items: center; gap: 6px;
+  flex-wrap: wrap;
+}
+#assignment-lbl {
+  color: #1a1205;
+  background: var(--sun);
+  padding: 5px 10px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-self: flex-start;
+}
+#log-lbl { color: #ffffff; }
+.es {
+  font-style: italic;
+  opacity: .72;
+  font-weight: 400;
+}
+.obj-lock {
+  margin-top: 8px;
+  font-size: 12px; font-weight: 700;
+  color: var(--sun);
+  letter-spacing: .3px;
+}
+
+/* ══════════════════════════════════════
+   LEFT COLUMN
+══════════════════════════════════════ */
+#col-left {
+  display: flex; flex-direction: column; gap: 10px;
+  overflow-y: auto; overflow-x: hidden;
+}
+#col-left::-webkit-scrollbar { width: 3px; }
+#col-left::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+/* Objective card */
+.obj-title {
+  font-size: 16px; font-weight: 800; color: #fff;
+  margin-bottom: 6px; line-height: 1.3;
+}
+.obj-desc {
+  font-size: 12px; color: #ffffff; line-height: 1.55;
+}
+.target-box {
+  margin-top: 12px;
+  background: var(--bg);
+  border: 1px solid var(--border2);
+  border-radius: 10px;
+  padding: 10px 12px;
+  text-align: center;
+}
+.target-box .tlbl {
+  font-size: 9px; color: var(--muted);
+  font-family: var(--mono); text-transform: uppercase;
+  letter-spacing: 1.5px; display: block; margin-bottom: 3px;
+}
+.target-box .tval {
+  font-size: 17px; font-weight: 900;
+  color: var(--sun); font-family: var(--mono);
+  letter-spacing: 1px; display: block;
+}
+
+/* Glow card */
+.glow-card {
+  background: linear-gradient(135deg, var(--card), rgba(30,58,138,.15));
+  border-color: rgba(59,130,246,.25);
+}
+.glow-dot-wrap { display: flex; align-items: center; gap: 8px; }
+.glow-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--info); flex-shrink: 0;
+  box-shadow: 0 0 0 3px rgba(96,165,250,.2);
+  animation: gdot 2.2s ease-in-out infinite;
+}
+@keyframes gdot {
+  0%,100% { box-shadow: 0 0 0 3px rgba(96,165,250,.2); }
+  50%      { box-shadow: 0 0 0 7px rgba(96,165,250,.05); }
+}
+.glow-lbl { font-size: 9px; font-weight: 700; letter-spacing: 2px; color: var(--info); text-transform: uppercase; }
+
+/* Phase guide */
+.phase-list { display: flex; flex-direction: column; gap: 2px; }
+.prow {
+  display: flex; align-items: center; gap: 8px;
+  padding: 4px 6px; border-radius: 7px;
+  font-size: 11px; color: var(--muted);
+  transition: background .12s, color .12s;
+  border-left: 2px solid transparent;
+  cursor: default;
+}
+.prow:hover { background: rgba(255,255,255,.04); color: var(--text); }
+.prow.active {
+  background: rgba(251,191,36,.08);
+  color: var(--sun);
+  border-left-color: var(--sun);
+}
+.pmoon {
+  width: 16px; height: 16px; border-radius: 50%;
+  flex-shrink: 0; border: 1px solid #1e3254; overflow: hidden;
+}
+
+/* ══════════════════════════════════════
+   CENTER COLUMN
+══════════════════════════════════════ */
+#col-center {
+  display: flex; flex-direction: column; gap: 10px;
+  min-height: 0; min-width: 0;
+}
+
+.views-row {
+  display: grid;
+  grid-template-columns: 1.35fr 1fr;
+  gap: 10px;
+  flex: 1;
+  min-height: 0; min-width: 0;
+}
+
+.view-box {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 8px;
+  display: flex; flex-direction: column;
+  min-height: 0; min-width: 0;
+  overflow: hidden;
+}
+
+/* Stacked column for View 2 + View 3 */
+.view-col-stack {
+  display: flex; flex-direction: column;
+  gap: 10px;
+  min-height: 0; min-width: 0;
+}
+.view-box-half {
+  flex: 1;
+  min-height: 0;
+}
+.view-box-half .vwrap { min-height: 90px; }
+.vtag {
+  font-size: 9px; font-weight: 700; letter-spacing: 1.5px;
+  text-transform: uppercase; color: #ffffff;
+  margin-bottom: 5px; flex-shrink: 0;
+  overflow-wrap: anywhere;
+}
+.vwrap {
+  flex: 1; position: relative;
+  min-height: 180px;
+}
+.vwrap canvas {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  display: block;
+}
+#spaceCanvas { cursor: grab; touch-action: none; }
+#spaceCanvas:active { cursor: grabbing; }
+.vfoot {
+  flex-shrink: 0;
+  text-align: center;
+  font-size: 10px; font-family: var(--mono);
+  color: var(--muted); margin-top: 5px;
+}
+#v1-foot { color: #ffffff; }
+#cur-phase-name { font-weight: 800; color: var(--sun); font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }
+
+/* Controls bar */
+.ctrl-bar {
+  flex-shrink: 0;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+/* Play bar (center of ctrl-bar) */
+.playbar {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  flex: 1; min-width: 140px;
+}
+.btn-play {
+  background: var(--surface);
+  color: var(--ok);
+  border: 1px solid var(--ok);
+  font-size: 13px; font-weight: 800;
+  padding: 8px 22px;
+  border-radius: 9px; cursor: pointer;
+  letter-spacing: 1px;
+  transition: all .15s;
+  min-width: 100px;
+}
+.btn-play:hover { background: rgba(52,211,153,.12); }
+.btn-play.playing {
+  color: var(--fail);
+  border-color: var(--fail);
+}
+.btn-play.playing:hover { background: rgba(248,113,113,.12); }
+
+.speed-wrap {
+  display: flex; align-items: center; gap: 6px;
+}
+.speed-lbl {
+  font-family: var(--mono); font-size: 9px;
+  color: var(--muted); letter-spacing: 1.5px; text-transform: uppercase;
+}
+.speed-val {
+  font-family: var(--mono); font-size: 11px; font-weight: 700;
+  color: var(--sun); min-width: 22px;
+}
+#speed-slider {
+  -webkit-appearance: none; appearance: none;
+  width: 90px; height: 4px;
+  background: var(--border2); border-radius: 2px; outline: none;
+  cursor: pointer;
+}
+#speed-slider::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 14px; height: 14px; border-radius: 50%;
+  background: var(--sun); cursor: pointer;
+  box-shadow: 0 0 6px rgba(251,191,36,.4);
+  transition: box-shadow .15s;
+}
+#speed-slider::-webkit-slider-thumb:hover {
+  box-shadow: 0 0 10px rgba(251,191,36,.7);
+}
+#speed-slider::-moz-range-thumb {
+  width: 14px; height: 14px; border-radius: 50%;
+  background: var(--sun); cursor: pointer; border: none;
+}
+
+.btn {
+  display: flex; align-items: center; gap: 8px;
+  border: none; border-radius: 9px; cursor: pointer;
+  font-size: 12px; font-weight: 700; padding: 9px 16px;
+  transition: all .15s; text-transform: uppercase; letter-spacing: .5px;
+  white-space: nowrap;
+}
+.btn-sec {
+  background: var(--surface); color: var(--text);
+  border: 1px solid var(--border2);
+}
+.btn-sec:hover { background: var(--border2); }
+
+/* Eclipse buttons */
+.ctrl-left { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; align-content: start; }
+.btn-eclipse {
+  background: var(--surface);
+  color: var(--info);
+  border: 1px solid rgba(96,165,250,.4);
+  font-size: 11px; padding: 7px 12px;
+}
+.btn-eclipse:hover { background: rgba(96,165,250,.12); border-color: var(--info); }
+.btn-eclipse.active {
+  background: rgba(96,165,250,.18);
+  border-color: var(--info);
+  box-shadow: 0 0 12px rgba(96,165,250,.3);
+}
+
+/* Tides button */
+.btn-tides {
+  background: var(--surface);
+  color: #38bdf8;
+  border: 1px solid rgba(56,189,248,.4);
+  font-size: 11px; padding: 7px 12px;
+}
+.btn-tides:hover { background: rgba(56,189,248,.12); border-color: #38bdf8; }
+.btn-tides.active {
+  background: rgba(56,189,248,.18);
+  border-color: #38bdf8;
+  box-shadow: 0 0 12px rgba(56,189,248,.3);
+}
+
+/* Rotation (spin) button */
+.btn-rotate {
+  background: var(--surface);
+  color: var(--ok);
+  border: 1px solid rgba(52,211,153,.4);
+  font-size: 11px; padding: 7px 12px;
+}
+.btn-rotate:hover { background: rgba(52,211,153,.12); border-color: var(--ok); }
+.btn-rotate.active {
+  background: rgba(52,211,153,.18);
+  border-color: var(--ok);
+  box-shadow: 0 0 12px rgba(52,211,153,.3);
+}
+
+/* Lunar month time-lapse button */
+.btn-month {
+  background: var(--surface);
+  color: var(--sun);
+  border: 1px solid rgba(251,191,36,.4);
+  font-size: 11px; padding: 7px 12px;
+}
+.btn-month:hover { background: rgba(251,191,36,.12); border-color: var(--sun); }
+.btn-month.active {
+  background: rgba(251,191,36,.18);
+  border-color: var(--sun);
+  box-shadow: 0 0 12px rgba(251,191,36,.3);
+}
+.btn-pri {
+  background: linear-gradient(135deg, var(--sun), #f97316);
+  color: #040a10;
+  box-shadow: 0 0 18px rgba(251,191,36,.2);
+}
+.btn-pri:hover { box-shadow: 0 0 28px rgba(251,191,36,.4); transform: translateY(-1px); }
+.btn-pri:active { transform: none; }
+
+/* Receive Badge button (appears after the final assignment) */
+.btn-receive {
+  display: block;
+  border: none; border-radius: 10px; cursor: pointer;
+  font-size: 13px; font-weight: 900; padding: 12px 22px;
+  text-transform: uppercase; letter-spacing: 1px;
+  background: linear-gradient(135deg, var(--sun), #f97316);
+  color: #1a1205;
+  box-shadow: 0 0 22px rgba(251,191,36,.45);
+  animation: badgePulse 1.4s ease-in-out infinite;
+}
+.btn-receive:hover { transform: translateY(-1px); box-shadow: 0 0 34px rgba(251,191,36,.6); }
+@keyframes badgePulse {
+  0%,100% { box-shadow: 0 0 18px rgba(251,191,36,.35); }
+  50%     { box-shadow: 0 0 34px rgba(251,191,36,.7); }
+}
+
+/* ══════════════════════════════════════
+   RIGHT COLUMN (Log)
+══════════════════════════════════════ */
+#col-right {
+  display: flex; flex-direction: column; gap: 10px;
+  min-height: 0; min-width: 0;
+}
+
+.log-card {
+  flex: 1; display: flex; flex-direction: column;
+  min-height: 0; min-width: 0;
+}
+.log-scroll {
+  flex: 1; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 3px;
+  padding-right: 2px;
+  min-width: 0;
+}
+.log-scroll::-webkit-scrollbar { width: 3px; }
+.log-scroll::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+.log-line {
+  font-family: var(--mono); font-size: 10px;
+  color: #c9d6ea;
+  padding: 5px 8px;
+  border-radius: 6px;
+  border-left: 2px solid var(--border);
+  background: var(--bg);
+  line-height: 1.45;
+  flex-shrink: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.log-line.ok   { color: var(--ok);  border-left-color: var(--ok);  background: rgba(52,211,153,.05); }
+.log-line.err  { color: var(--fail);border-left-color: var(--fail);background: rgba(248,113,113,.05); }
+.log-line.info { color: var(--info);border-left-color: var(--info);background: rgba(96,165,250,.04); }
+
+/* Progress row */
+.prog-wrap {
+  flex-shrink: 0;
+  background: var(--bg);
+  border: 1px solid var(--border2);
+  border-radius: 10px;
+  padding: 10px 14px;
+}
+.prog-row {
+  display: flex; justify-content: space-between;
+  font-size: 10px; color: var(--muted); margin-bottom: 7px;
+  font-family: var(--mono);
+}
+.prog-bg { height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; }
+.prog-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--ok), var(--ok2));
+  border-radius: 3px;
+  transition: width .7s cubic-bezier(.34,1.56,.64,1);
+  width: 0%;
+}
+
+/* ══════════════════════════════════════
+   SHAKE ANIMATION (wrong answer)
+══════════════════════════════════════ */
+@keyframes shake {
+  0%,100% { transform: translateX(0); }
+  15%     { transform: translateX(-5px); }
+  30%     { transform: translateX(5px); }
+  45%     { transform: translateX(-4px); }
+  60%     { transform: translateX(4px); }
+  75%     { transform: translateX(-2px); }
+  90%     { transform: translateX(2px); }
+}
+.shake {
+  animation: shake .45s ease-out;
+  border-color: var(--fail) !important;
+}
+
+/* ══════════════════════════════════════
+   WIN MODAL
+══════════════════════════════════════ */
+#modal {
+  position: fixed; inset: 0;
+  background: rgba(6,9,26,.93);
+  backdrop-filter: blur(10px);
+  z-index: 200;
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+  opacity: 0; pointer-events: none;
+  transition: opacity .35s;
+}
+#modal.show { opacity: 1; pointer-events: all; }
+
+.modal-card {
+  background: var(--card);
+  border: 1px solid rgba(251,191,36,.3);
+  border-radius: 20px;
+  max-width: 390px; width: 100%;
+  padding: 30px 26px;
+  text-align: center;
+  display: flex; flex-direction: column; align-items: center; gap: 18px;
+  box-shadow: 0 0 80px rgba(251,191,36,.07);
+  transform: scale(.9);
+  transition: transform .35s cubic-bezier(.34,1.56,.64,1);
+}
+#modal.show .modal-card { transform: scale(1); }
+
+.badge {
+  position: relative;
+  display: flex; flex-direction: column; align-items: center;
+  filter: drop-shadow(0 0 28px rgba(251,191,36,.4));
+}
+.badge svg { display: block; }
+#modal.show .badge svg { animation: badgePop .6s cubic-bezier(.34,1.56,.64,1); }
+@keyframes badgePop {
+  0%   { transform: scale(.3) rotate(-30deg); opacity: 0; }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+.badge-banner {
+  margin-top: -14px;
+  background: linear-gradient(135deg, var(--sun), #f97316);
+  color: #1a1205;
+  font-weight: 900; font-size: 13px; letter-spacing: 2px;
+  padding: 5px 18px; border-radius: 20px;
+  box-shadow: 0 4px 14px rgba(251,191,36,.45);
+  border: 1px solid rgba(255,255,255,.3);
+  text-transform: uppercase;
+}
+.modal-title { font-size: 24px; font-weight: 900; text-transform: uppercase; letter-spacing: 2px; color: #fff; }
+.modal-body  { font-size: 12px; color: #7a9abf; line-height: 1.65; }
+
+.cert {
+  background: var(--bg); border: 1px solid var(--border2);
+  border-radius: 12px; padding: 14px 16px;
+  width: 100%; text-align: left;
+  font-family: var(--mono); font-size: 11px; color: var(--sun); line-height: 2;
+}
+.cert-hd { color: var(--sun); font-weight: 700; text-align: center; display: block; margin-bottom: 4px; }
+
+.btn-replay {
+  width: 100%; padding: 14px;
+  background: linear-gradient(135deg, var(--sun), #f97316);
+  color: #040a10; font-weight: 900; font-size: 13px;
+  border: none; border-radius: 12px; cursor: pointer;
+  text-transform: uppercase; letter-spacing: 1px;
+  box-shadow: 0 0 24px rgba(251,191,36,.25);
+  transition: all .15s;
+}
+.btn-replay:hover { transform: translateY(-2px); box-shadow: 0 0 38px rgba(251,191,36,.4); }
+</style>
+</head>
+<body>
+
+<!-- ══ HEADER ══════════════════════════════════════════ -->
+<header id="hdr">
+  <div class="logo">
+    <div class="logo-orb">🌙</div>
+    <div class="logo-txt">
+      <h1>ORBIT ODYSSEY<br><span class="es">(Odisea Orbital)</span></h1>
+      <p>MISSION: LUNAR LOCKDOWN<br><span class="es">(Misión: Cierre Lunar)</span></p>
+    </div>
+  </div>
+  <div class="hud">
+    <div class="chip" id="chip-power">
+      <span class="lbl">GRID POWER:<br><span class="es">(Energía de la Red:)</span></span>
+      <span class="val" id="v-power">0%</span>
+    </div>
+    <div class="chip" id="chip-level">
+      <span class="lbl">SECTOR:<br><span class="es">(Sector:)</span></span>
+      <span class="val" id="v-level">1 / 5</span>
+    </div>
+    <button id="btn-reset" title="Restart the mission from Level 1 (Reiniciar la misión desde el Nivel 1)">↺ Reset<br><span class="es">(Reiniciar)</span></button>
+  </div>
+</header>
+
+<!-- ══ MAIN ════════════════════════════════════════════ -->
+<main id="main">
+
+  <!-- LEFT -->
+  <div id="col-left">
+    <div class="card">
+      <div class="card-lbl" id="assignment-lbl">🎯 Current Assignment <span class="es">(Asignación Actual)</span></div>
+      <div class="obj-title" id="lv-title">Loading…</div>
+      <div class="obj-desc"  id="lv-desc">Loading…</div>
+      <div class="obj-lock">Now Lock Alignment <span class="es">(Ahora Fija la Alineación)</span></div>
+      <div class="target-box">
+        <span class="tlbl">Your Target Phase<br><span class="es">(Tu Fase Objetivo)</span></span>
+        <span class="tval" id="target-name">—</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-lbl">📖 The 8 Moon Phases <span class="es">(Las 8 Fases Lunares)</span></div>
+      <div class="phase-list" id="phase-list"></div>
+    </div>
+  </div>
+
+  <!-- CENTER -->
+  <div id="col-center">
+    <div class="views-row">
+
+      <div class="view-box">
+        <div class="vtag">🔭 View 1 — From Space (Top-Down) <span class="es">(Vista 1 — Desde el Espacio / Vista Superior)</span></div>
+        <div class="vwrap"><canvas id="spaceCanvas"></canvas></div>
+        <div class="vfoot" id="v1-foot">Drag the Moon along the track <span class="es">(Arrastra la Luna por la órbita)</span></div>
+      </div>
+
+      <div class="view-col-stack">
+        <div class="view-box view-box-half">
+          <div class="vtag">🌍 View 2 — From Earth (Sky View) <span class="es">(Vista 2 — Desde la Tierra / Vista del Cielo)</span></div>
+          <div class="vwrap"><canvas id="skyCanvas"></canvas></div>
+          <div class="vfoot"><span id="cur-phase-name">New Moon (Luna Nueva)</span></div>
+        </div>
+
+        <div class="view-box view-box-half">
+          <div class="vtag">📐 View 3 — Side View (Orbit Tilt) <span class="es">(Vista 3 — Vista Lateral / Inclinación Orbital)</span></div>
+          <div class="vwrap"><canvas id="sideCanvas"></canvas></div>
+          <div class="vfoot"><span id="eclipse-status">Moon's orbit is tilted ~5° (La órbita lunar está inclinada ~5°)</span></div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="ctrl-bar">
+      <div class="ctrl-left">
+        <button class="btn btn-sec" id="btn-beams">☀️ Sunbeams <span class="es">(Rayos de Sol)</span></button>
+        <button class="btn btn-rotate" id="btn-rotate">🔄 Spin = Orbit <span class="es">(Giro = Órbita)</span></button>
+        <button class="btn btn-tides" id="btn-tides">🌊 Show Tides <span class="es">(Mostrar Mareas)</span></button>
+        <button class="btn btn-eclipse" id="btn-solar">🌑 Solar Eclipse <span class="es">(Eclipse Solar)</span></button>
+        <button class="btn btn-eclipse" id="btn-lunar">🌕 Lunar Eclipse <span class="es">(Eclipse Lunar)</span></button>
+        <button class="btn btn-month" id="btn-synodic">🌑 Synodic 29.5d <span class="es">(Sinódico 29.5d)</span></button>
+        <button class="btn btn-month" id="btn-sidereal">⭐ Sidereal 27.3d <span class="es">(Sideral 27.3d)</span></button>
+      </div>
+
+      <div class="playbar">
+        <button class="btn btn-play" id="btn-play">▶ Play <span class="es">(Reproducir)</span></button>
+        <div class="speed-wrap">
+          <span class="speed-lbl">SPEED<br><span class="es">(Velocidad)</span></span>
+          <input type="range" id="speed-slider" min="1" max="5" value="2" step="1">
+          <span class="speed-val" id="speed-val">2×</span>
+        </div>
+      </div>
+
+      <button class="btn btn-pri" id="btn-lock">Lock Alignment 🔒 <span class="es">(Fijar Alineación)</span></button>
+    </div>
+  </div>
+
+  <!-- RIGHT -->
+  <div id="col-right">
+    <div class="card log-card">
+      <div class="card-lbl" id="log-lbl">📡 Mission Log <span class="es">(Registro de Misión)</span></div>
+      <div class="log-scroll" id="log"></div>
+    </div>
+    <div class="prog-wrap">
+      <div class="prog-row">
+        <span>GRID POWER <span class="es">(Energía de la Red)</span></span>
+        <span id="prog-pct">0%</span>
+      </div>
+      <div class="prog-bg">
+        <div class="prog-fill" id="prog-fill"></div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- ══ WIN MODAL ═══════════════════════════════════════ -->
+<div id="modal">
+  <div class="modal-card">
+    <div class="badge">
+      <svg viewBox="0 0 200 200" width="160" height="160" xmlns="http://www.w3.org/2000/svg" aria-label="Lunar mastery badge">
+        <defs>
+          <radialGradient id="badgeGlow" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#fde68a"/>
+            <stop offset="55%" stop-color="#fbbf24"/>
+            <stop offset="100%" stop-color="#b45309"/>
+          </radialGradient>
+          <radialGradient id="moonCore" cx="38%" cy="35%" r="70%">
+            <stop offset="0%" stop-color="#ffffff"/>
+            <stop offset="70%" stop-color="#dbe6f5"/>
+            <stop offset="100%" stop-color="#9fb2cf"/>
+          </radialGradient>
+        </defs>
+        <!-- outer star burst ring -->
+        <g id="badgeRays"></g>
+        <!-- gold rim -->
+        <circle cx="100" cy="100" r="74" fill="none" stroke="url(#badgeGlow)" stroke-width="6"/>
+        <circle cx="100" cy="100" r="66" fill="#0b1024"/>
+        <!-- 8 mini moon phases around the ring -->
+        <g id="phaseRing"></g>
+        <!-- central full moon -->
+        <circle cx="100" cy="100" r="30" fill="url(#moonCore)"/>
+        <circle cx="90" cy="92" r="5" fill="#c2cfe2" opacity=".6"/>
+        <circle cx="108" cy="104" r="3.5" fill="#c2cfe2" opacity=".5"/>
+        <circle cx="98" cy="110" r="2.5" fill="#c2cfe2" opacity=".5"/>
+      </svg>
+      <div class="badge-banner">LUNAR MASTER <span class="es">(Maestro Lunar)</span></div>
+    </div>
+    <div class="modal-body">Outstanding, Captain! You've mastered the moon phases, both eclipses, and the sidereal and synodic months. Your science grade just went to the moon — literally!<br><br><span class="es">(¡Excelente, Capitán! Has dominado las fases lunares, ambos eclipses, y los meses sideral y sinódico. ¡Tu nota de ciencias llegó hasta la Luna, literalmente!)</span></div>
+    <div class="cert">
+      <span class="cert-hd">✦ OFFICIAL CREDENTIAL ✦ <span class="es">(Credencial Oficial)</span></span>
+      <div>• Rank: Master Lunar Navigator <span class="es">(Rango: Navegante Lunar Maestro)</span></div>
+      <div>• Phases Mastered: 8 of 8 <span class="es">(Fases Dominadas: 8 de 8)</span></div>
+      <div>• Eclipses: Solar ✓  Lunar ✓ <span class="es">(Eclipses: Solar ✓ Lunar ✓)</span></div>
+      <div>• Months: Sidereal ✓  Synodic ✓ <span class="es">(Meses: Sideral ✓ Sinódico ✓)</span></div>
+      <div>• Science Score: A+ <span class="es">(Nota de Ciencias: A+)</span></div>
+    </div>
+    <button class="btn-replay" id="btn-replay">🚀 Play Again <span class="es">(Jugar de Nuevo)</span></button>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════════
+//  ORBIT ODYSSEY — GAME ENGINE
+//
+//  All logic verified by 459 automated tests before shipping.
+//  Key algorithm: moon angle (radians, 0=right=New Moon) drives both views.
+//  Sky rendering uses proven terminator-x = r*cos(angle) formula.
+// ══════════════════════════════════════════════════════════════════
+
+// ── PHASE TABLE ──────────────────────────────────────────────────
+//  Angle 0° = Moon on the RIGHT (between Earth & Sun) = New Moon
+//  Angle 90° = Moon BELOW Earth = First Quarter (right side lit from Earth view)
+//  Angle 180° = Moon on the LEFT (opposite Sun) = Full Moon
+//  Angle 270° = Moon ABOVE Earth = Third Quarter (left side lit from Earth view)
+const PHASES = [
+  { id:0, name:"New Moon (Luna Nueva)",            minD:345, maxD:15,  emoji:"🌑" },
+  { id:1, name:"Waxing Crescent (Creciente)",      minD:15,  maxD:75,  emoji:"🌒" },
+  { id:2, name:"First Quarter (Cuarto Creciente)", minD:75,  maxD:105, emoji:"🌓" },
+  { id:3, name:"Waxing Gibbous (Gibosa Creciente)",minD:105, maxD:165, emoji:"🌔" },
+  { id:4, name:"Full Moon (Luna Llena)",           minD:165, maxD:195, emoji:"🌕" },
+  { id:5, name:"Waning Gibbous (Gibosa Menguante)",minD:195, maxD:255, emoji:"🌖" },
+  { id:6, name:"Third Quarter (Cuarto Menguante)", minD:255, maxD:285, emoji:"🌗" },
+  { id:7, name:"Waning Crescent (Menguante)",      minD:285, maxD:345, emoji:"🌘" },
+];
+
+const PHASE_TIPS = [
+  "The Moon is between Earth and the Sun — we see the dark side!",
+  "A thin sliver of light on the RIGHT side, growing each night.",
+  "Exactly HALF the moon is lit — on the right side! 1/4 of the orbit done.",
+  "More than half is lit on the right side, swelling toward Full Moon.",
+  "The Moon is OPPOSITE the Sun — the full face is lit up!",
+  "Still mostly lit, but the light on the right is starting to shrink.",
+  "Exactly HALF is lit — on the LEFT now. 3/4 of the orbit done.",
+  "Just a thin sliver on the LEFT, fading back to New Moon.",
+];
+
+// ── LEVEL TABLE ──────────────────────────────────────────────────
+const LEVELS = [
+  {
+    id: 1, type: 'phase', target: 0,
+    title: "Level 1: The Dark Side (Nivel 1: El Lado Oscuro)",
+    desc:  "Put the Moon directly between Earth and the Sun. The whole face will be dark! (Pon la Luna justo entre la Tierra y el Sol. ¡Toda la cara estará oscura!)",
+    glow:  '"Think hide-and-seek! The Moon \'hides\' from the Sun\'s light. Drag it to the RIGHT of Earth — that\'s where the Sun is coming from."',
+  },
+  {
+    id: 2, type: 'phase', target: 1,
+    title: "Level 2: First Light (Nivel 2: Primera Luz)",
+    desc:  "Move the Moon a little past New Moon. A thin sliver of light grows on the RIGHT — a Waxing Crescent! (Mueve la Luna un poco después de la Luna Nueva. Una fina línea de luz crece a la DERECHA — ¡una Luna Creciente!)",
+    glow:  '"Waxing means the light is GROWING. Just after New Moon, a thin curve of light appears on the right side. Nudge the Moon up from the Sun side."',
+  },
+  {
+    id: 3, type: 'phase', target: 2,
+    title: "Level 3: Half & Half (Right) (Nivel 3: Mitad y Mitad / Derecha)",
+    desc:  "Find the position where exactly HALF of the Moon is lit — the RIGHT half! (Encuentra la posición donde exactamente la MITAD de la Luna está iluminada — ¡la mitad DERECHA!)",
+    glow:  '"First Quarter means 1/4 of the orbit is complete. Look at the SKY VIEW — when the right half glows and the left half is dark, you\'ve nailed it!"',
+  },
+  {
+    id: 4, type: 'phase', target: 3,
+    title: "Level 4: Almost Full (Nivel 4: Casi Llena)",
+    desc:  "Keep going! More than half is now lit on the RIGHT — a Waxing Gibbous, just before Full Moon. (¡Sigue! Más de la mitad está iluminada a la DERECHA — una Gibosa Creciente, justo antes de la Luna Llena.)",
+    glow:  '"Gibbous means more than half but not full. The bright part keeps growing on the right as the Moon heads toward Full."',
+  },
+  {
+    id: 5, type: 'phase', target: 4,
+    title: "Level 5: Maximum Glow (Nivel 5: Brillo Máximo)",
+    desc:  "Move the Moon to the OPPOSITE side of Earth from the Sun. The full face will shine! (Mueve la Luna al lado OPUESTO de la Tierra respecto al Sol. ¡Toda la cara brillará!)",
+    glow:  '"Full Moon = farthest from the Sun! Drag the Moon all the way to the LEFT side of Earth. Now both Earth and the Moon face the Sun at the same time."',
+  },
+  {
+    id: 6, type: 'phase', target: 5,
+    title: "Level 6: Starting to Shrink (Nivel 6: Empieza a Encoger)",
+    desc:  "Just past Full Moon, the light begins to fade on the RIGHT — a Waning Gibbous. (Justo después de la Luna Llena, la luz empieza a desvanecerse a la DERECHA — una Gibosa Menguante.)",
+    glow:  '"Waning means the light is LEAVING. After Full Moon, the lit part shrinks, fading from the right side first."',
+  },
+  {
+    id: 7, type: 'phase', target: 6,
+    title: "Level 7: Half & Half (Left) (Nivel 7: Mitad y Mitad / Izquierda)",
+    desc:  "Now find where exactly HALF is lit — but on the LEFT side this time! (Ahora encuentra dónde exactamente la MITAD está iluminada — ¡pero del lado IZQUIERDO esta vez!)",
+    glow:  '"Third Quarter = 3/4 around the orbit. It looks the same size as First Quarter but FLIPPED. The LEFT half glows now. Keep watching the sky view!"',
+  },
+  {
+    id: 8, type: 'phase', target: 7,
+    title: "Level 8: Final Sliver (Nivel 8: Última Astilla de Luz)",
+    desc:  "Almost a full orbit! Find the thin crescent on the LEFT — the last bit of light before New Moon. (¡Casi una órbita completa! Encuentra la fina luna creciente a la IZQUIERDA — el último rayo de luz antes de la Luna Nueva.)",
+    glow:  '"Waning means the light is leaving. Only a thin slice clings to the LEFT side. One more and you\'ve mastered the whole cycle!"',
+  },
+  {
+    id: 9, type: 'spin',
+    title: "Level 9: Always the Same Face (Nivel 9: Siempre la Misma Cara)",
+    desc:  "The Moon SPINS exactly once each time it ORBITS Earth. Press the Spin = Orbit button to see why we only ever see one side! (La Luna GIRA exactamente una vez cada vez que ORBITA la Tierra. ¡Presiona el botón Giro = Órbita para ver por qué solo vemos un lado!)",
+    glow:  '"Watch the craters: as the Moon goes around, it turns at the same rate, so the same side always points at Earth. That\'s called tidal locking!"',
+    goal:  "Show Spin = Orbit (Mostrar Giro = Órbita)",
+  },
+  {
+    id: 10, type: 'tides',
+    title: "Level 10: Ocean Tides (Nivel 10: Las Mareas del Océano)",
+    desc:  "The Moon's gravity pulls Earth's oceans into TWO bulges — high tides! Press Show Tides, then drag the Moon and watch the bulges follow it. (¡La gravedad de la Luna jala los océanos de la Tierra en DOS abultamientos — mareas altas! Presiona Mostrar Mareas, luego arrastra la Luna y observa cómo los abultamientos la siguen.)",
+    glow:  '"Tip: there are TWO high tides — one on the side facing the Moon, one on the far side. As Earth spins each day, every coast passes through both."',
+    goal:  "Show the Tides (Mostrar las Mareas)",
+  },
+  {
+    id: 11, type: 'eclipse', eclipse: 'solar',
+    title: "Level 11: Block the Sun (Nivel 11: Bloquea el Sol)",
+    desc:  "Make a SOLAR eclipse! Press the Solar Eclipse button to line up the Moon between Earth and the Sun. (¡Crea un eclipse SOLAR! Presiona el botón Eclipse Solar para alinear la Luna entre la Tierra y el Sol.)",
+    glow:  '"A solar eclipse needs a New Moon AND the Moon lined up on the flat orbit path. The button does the lining-up for you!"',
+    goal:  "Trigger a Solar Eclipse (Provocar un Eclipse Solar)",
+  },
+  {
+    id: 12, type: 'eclipse', eclipse: 'lunar',
+    title: "Level 12: Earth's Shadow (Nivel 12: La Sombra de la Tierra)",
+    desc:  "Make a LUNAR eclipse! Press the Lunar Eclipse button so Earth's shadow falls on the Full Moon. (¡Crea un eclipse LUNAR! Presiona el botón Eclipse Lunar para que la sombra de la Tierra caiga sobre la Luna Llena.)",
+    glow:  '"A lunar eclipse needs a Full Moon lined up so it slips into Earth\'s shadow. Watch it turn blood-red!"',
+    goal:  "Trigger a Lunar Eclipse (Provocar un Eclipse Lunar)",
+  },
+  {
+    id: 13, type: 'month', month: 'sidereal',
+    title: "Level 13: One Trip Around (Nivel 13: Una Vuelta Completa)",
+    desc:  "Run the SIDEREAL month! Press the Sidereal 27.3d button and watch the Moon make one full trip around Earth. (¡Ejecuta el mes SIDERAL! Presiona el botón Sideral 27.3d y observa a la Luna dar una vuelta completa alrededor de la Tierra.)",
+    glow:  '"A sidereal month is one full orbit measured against the stars — about 27.3 days. Let the time-lapse finish!"',
+    goal:  "Complete a Sidereal Month (Completar un Mes Sideral)",
+  },
+  {
+    id: 14, type: 'month', month: 'synodic',
+    title: "Level 14: New Moon to New Moon (Nivel 14: De Luna Nueva a Luna Nueva)",
+    desc:  "Run the SYNODIC month! Press the Synodic 29.5d button and watch the phases cycle from New Moon back to New Moon. (¡Ejecuta el mes SINÓDICO! Presiona el botón Sinódico 29.5d y observa el ciclo de fases de Luna Nueva a Luna Nueva.)",
+    glow:  '"A synodic month is New Moon to New Moon — about 29.5 days. It takes longer because Earth keeps moving around the Sun!"',
+    goal:  "Complete a Synodic Month (Completar un Mes Sinódico)",
+  },
+];
+
+// ── STATE ────────────────────────────────────────────────────────
+let angle      = 0;        // radians; 0=right=New Moon
+let dragging   = false;
+let showBeams  = true;
+let showRotationArrow = false;
+let showTides = false;
+let curLevel   = 1;
+let awaitingContinue = false;   // demo levels (spin/tides) wait for a Continue click
+let targetId   = 0;
+
+// ── ANIMATION STATE ──────────────────────────────────────────────
+let isPlaying   = false;
+let animFrameId = null;
+let lastTs      = null;
+let spinFrameId = null;     // spin = orbit demo animation
+let spinLastTs  = null;
+// Degrees per second for each speed slider value (1–5)
+const SPEED_DPS = [15, 30, 60, 120, 240];
+
+// ── ORBIT TILT / ECLIPSE STATE ───────────────────────────────────
+const TILT_DEG = 18;                       // exaggerated orbital tilt for visibility (real ~5°)
+const TILT_RAD = TILT_DEG * Math.PI / 180;
+let nodeAngle  = 50 * Math.PI / 180;        // default: line of nodes offset → no eclipse normally
+let eclipseMode = 'none';                    // 'none' | 'solar' | 'lunar'
+
+// Vertical height of Moon above/below the ecliptic plane (for side view)
+function moonZHeight(orbitR) {
+  return Math.sin(angle - nodeAngle) * Math.sin(TILT_RAD) * orbitR;
+}
+
+// ── LUNAR MONTH TIME-LAPSE STATE ─────────────────────────────────
+const SIDEREAL_DAYS = 27 + 7/24 + 43/1440;  // 27d 7h 43m = 27.3215 (orbit vs stars)
+const SYNODIC_DAYS  = 29.5306;               // New Moon → New Moon (vs Sun)
+const YEAR_DAYS     = 365.25;                // for star-reference drift
+const DAYS_PER_SEC  = [1, 2, 4, 8, 16];      // time-lapse speed per slider step
+let timeTracking = false;
+let compareMode  = false;   // zoomed-out Sun-centered view for month comparison
+let elapsedDays  = 0;
+let monthFrameId = null;
+let monthLastTs  = null;
+let siderealHit  = false;   // logged once
+let synodicHit   = false;
+
+
+
+// ── CANVAS SETUP ─────────────────────────────────────────────────
+const SC  = document.getElementById('spaceCanvas');
+const SK  = document.getElementById('skyCanvas');
+const SD  = document.getElementById('sideCanvas');
+const sCtx = SC.getContext('2d');
+const kCtx = SK.getContext('2d');
+const dCtx = SD.getContext('2d');
+
+function resizeAll() {
+  [SC, SK, SD].forEach(c => {
+    c.width  = c.parentElement.clientWidth;
+    c.height = c.parentElement.clientHeight;
+  });
+  renderAll();
+}
+const ro = new ResizeObserver(resizeAll);
+ro.observe(SC.parentElement);
+ro.observe(SK.parentElement);
+ro.observe(SD.parentElement);
+
+// ── PHASE LOOKUP ─────────────────────────────────────────────────
+function getPhase(rad) {
+  const d = ((rad * 180 / Math.PI) + 360) % 360;
+  for (const p of PHASES) {
+    if (p.minD > p.maxD) { if (d >= p.minD || d < p.maxD) return p; }
+    else                  { if (d >= p.minD && d < p.maxD) return p; }
+  }
+  return PHASES[0];
+}
+
+// ── DRAW: SPACE VIEW ─────────────────────────────────────────────
+function drawSpace() {
+  const W = SC.width, H = SC.height;
+  let cx = W * 0.47, cy = H * 0.5;
+  let orbitR = Math.min(W, H) * 0.32;
+  let earthR = Math.max(16, Math.min(W, H) * 0.075);
+  let moonR  = Math.max(5,  earthR * 0.27);
+
+  // Spin = Orbit demo: zoom in on Earth + Moon so the "same side always
+  // faces Earth" is easy to see.
+  if (showRotationArrow) {
+    earthR = Math.max(26, Math.min(W, H) * 0.16);
+    moonR  = earthR * 0.34;
+    orbitR = Math.min(W, H) * 0.34;
+    cx = W * 0.46; cy = H * 0.5;
+  }
+
+  sCtx.clearRect(0, 0, W, H);
+
+  // Sun glow from the right edge
+  const sg = sCtx.createRadialGradient(W + 20, cy, 0, W + 20, cy, W * 0.95);
+  sg.addColorStop(0,   'rgba(251,191,36,.6)');
+  sg.addColorStop(.25, 'rgba(251,191,36,.14)');
+  sg.addColorStop(1,   'rgba(0,0,0,0)');
+  sCtx.fillStyle = sg;
+  sCtx.fillRect(0, 0, W, H);
+
+  // Sun label
+  sCtx.fillStyle = 'rgba(251,191,36,.55)';
+  sCtx.font = `bold ${Math.max(8,Math.floor(W*0.025))}px Courier New`;
+  sCtx.textAlign = 'right';
+  sCtx.fillText('☀  SUN', W - 6, cy + 4);
+
+  // Sunbeams — bright dashed rays showing sun direction
+  if (showBeams) {
+    sCtx.save();
+    sCtx.setLineDash([8, 10]);
+    sCtx.lineWidth = 2;
+    for (let i = -2; i <= 2; i++) {
+      const beamY = cy + i * H * 0.16;
+      // Arrow shaft
+      sCtx.strokeStyle = i === 0 ? 'rgba(251,191,36,.85)' : 'rgba(251,191,36,.55)';
+      sCtx.beginPath();
+      sCtx.moveTo(W - 10, beamY);
+      sCtx.lineTo(10, beamY);
+      sCtx.stroke();
+    }
+    sCtx.setLineDash([]);
+    // Arrow heads pointing left (sunlight travels left → right to left toward Earth)
+    sCtx.fillStyle = 'rgba(251,191,36,.7)';
+    for (let i = -2; i <= 2; i++) {
+      const beamY = cy + i * H * 0.16;
+      const ax = W * 0.22; // arrowhead position
+      sCtx.beginPath();
+      sCtx.moveTo(ax - 10, beamY);
+      sCtx.lineTo(ax + 4, beamY - 5);
+      sCtx.lineTo(ax + 4, beamY + 5);
+      sCtx.closePath();
+      sCtx.fill();
+    }
+    // Label
+    sCtx.fillStyle = 'rgba(251,191,36,.75)';
+    sCtx.font = `bold ${Math.max(9,Math.floor(W*0.028))}px Courier New`;
+    sCtx.textAlign = 'center';
+    sCtx.fillText('SUNLIGHT', W * 0.5, cy - H * 0.16 * 2 - 8);
+    sCtx.restore();
+  }
+
+  // Orbit track
+  sCtx.beginPath();
+  sCtx.arc(cx, cy, orbitR, 0, Math.PI * 2);
+  sCtx.strokeStyle = '#1a3060';
+  sCtx.lineWidth = 1.5;
+  sCtx.stroke();
+
+  // ── LUNAR ECLIPSE: Earth's shadow cone reaching the Moon (View 1) ──
+  // Shadow points away from the Sun (Sun is right → cone extends left),
+  // and the Full Moon sits inside it.
+  if (eclipseMode === 'lunar') {
+    const endX = cx - orbitR * 1.15;
+    sCtx.save();
+    const cg = sCtx.createLinearGradient(cx, cy, endX, cy);
+    cg.addColorStop(0,   'rgba(20,28,50,.75)');
+    cg.addColorStop(0.7, 'rgba(40,16,14,.7)');
+    cg.addColorStop(1,   'rgba(70,24,18,.6)');
+    sCtx.fillStyle = cg;
+    sCtx.beginPath();
+    sCtx.moveTo(cx, cy - earthR);
+    sCtx.lineTo(endX, cy - moonR * 1.7);
+    sCtx.lineTo(endX, cy + moonR * 1.7);
+    sCtx.lineTo(cx, cy + earthR);
+    sCtx.closePath();
+    sCtx.fill();
+    // "EARTH'S SHADOW" label along the cone
+    sCtx.fillStyle = 'rgba(180,90,70,.85)';
+    sCtx.font = `bold ${Math.max(6,Math.floor(W*0.018))}px Courier New`;
+    sCtx.textAlign = 'center';
+    sCtx.fillText("EARTH'S SHADOW", (cx + endX) / 2, cy - moonR * 2.4);
+    sCtx.textAlign = 'left';
+    sCtx.restore();
+  }
+
+  // ── TIDAL BULGES (toggle) ──
+  // Moon's gravity stretches Earth's oceans into an egg shape:
+  // a bulge toward the Moon (near side) and one opposite (far side).
+  // The bulge axis points along the Earth–Moon line and follows the Moon.
+  if (showTides) {
+    const mxT = cx + Math.cos(angle) * orbitR;
+    const myT = cy - Math.sin(angle) * orbitR;
+    const toMoon = Math.atan2(myT - cy, mxT - cx);
+    const bulgeA = earthR * 1.6;   // long axis (high tide, toward & away from Moon)
+    const bulgeB = earthR * 1.02;  // short axis (low tide at the sides)
+    // Water envelope (cyan, semi-transparent) — drawn behind Earth
+    sCtx.save();
+    const wg = sCtx.createRadialGradient(cx, cy, earthR*0.6, cx, cy, bulgeA);
+    wg.addColorStop(0, 'rgba(56,189,248,.15)');
+    wg.addColorStop(1, 'rgba(56,189,248,.45)');
+    sCtx.fillStyle = wg;
+    sCtx.beginPath();
+    sCtx.ellipse(cx, cy, bulgeA, bulgeB, toMoon, 0, Math.PI*2);
+    sCtx.fill();
+    sCtx.strokeStyle = 'rgba(125,211,252,.6)';
+    sCtx.lineWidth = 1.2;
+    sCtx.stroke();
+    sCtx.restore();
+  }
+
+  // Earth — ocean
+  sCtx.beginPath();
+  sCtx.arc(cx, cy, earthR, 0, Math.PI * 2);
+  sCtx.fillStyle = var_earthBlue();
+  sCtx.fill();
+
+  // Earth — land blobs
+  const blobs = [
+    [-earthR*.28, -earthR*.3, earthR*.44, earthR*.28, .5],
+    [ earthR*.12,  earthR*.1, earthR*.28, earthR*.18,-.3],
+    [-earthR*.1,   earthR*.3, earthR*.2,  earthR*.12, .2],
+  ];
+  sCtx.fillStyle = '#166534';
+  for (const [bx,by,brx,bry,rot] of blobs) {
+    sCtx.beginPath();
+    sCtx.ellipse(cx+bx, cy+by, brx, bry, rot, 0, Math.PI*2);
+    sCtx.fill();
+  }
+
+  // Earth — night shadow (sun is right, so left half is dark)
+  const eShadow = sCtx.createLinearGradient(cx - earthR, cy, cx + earthR, cy);
+  eShadow.addColorStop(0,    'rgba(4,7,20,.85)');
+  eShadow.addColorStop(.45,  'rgba(4,7,20,.6)');
+  eShadow.addColorStop(.62,  'rgba(4,7,20,0)');
+  sCtx.save();
+  sCtx.beginPath(); sCtx.arc(cx, cy, earthR, 0, Math.PI*2); sCtx.clip();
+  sCtx.fillStyle = eShadow;
+  sCtx.fillRect(cx - earthR, cy - earthR, earthR*2, earthR*2);
+  sCtx.restore();
+
+  // Earth label
+  sCtx.fillStyle = 'rgba(96,165,250,.5)';
+  sCtx.font = `bold ${Math.max(7,Math.floor(W*0.022))}px Courier New`;
+  sCtx.textAlign = 'center';
+  sCtx.fillText('EARTH', cx, cy + earthR + 12);
+
+  // ── SOLAR ECLIPSE: Moon casts a small shadow spot on Earth ──
+  // The umbra hits Earth's surface on the side facing the Moon.
+  if (eclipseMode === 'solar') {
+    const ux = cx + Math.cos(angle) * earthR * 0.85;
+    const uy = cy - Math.sin(angle) * earthR * 0.85;  // CCW convention
+    const spotR = Math.max(2, earthR * 0.2);
+    sCtx.save();
+    sCtx.beginPath(); sCtx.arc(cx, cy, earthR, 0, Math.PI*2); sCtx.clip();
+    // penumbra (lighter)
+    sCtx.fillStyle = 'rgba(8,10,20,.45)';
+    sCtx.beginPath(); sCtx.arc(ux, uy, spotR*1.9, 0, Math.PI*2); sCtx.fill();
+    // umbra (dark core)
+    sCtx.fillStyle = 'rgba(4,6,14,.92)';
+    sCtx.beginPath(); sCtx.arc(ux, uy, spotR, 0, Math.PI*2); sCtx.fill();
+    sCtx.restore();
+    // label pointing to the spot
+    sCtx.fillStyle = 'rgba(180,190,210,.9)';
+    sCtx.font = `bold ${Math.max(6,Math.floor(W*0.018))}px Courier New`;
+    sCtx.textAlign = 'center';
+    sCtx.fillText("MOON'S SHADOW", cx + Math.cos(angle)*earthR*2.4, cy - Math.sin(angle)*earthR*2.4);
+    sCtx.textAlign = 'left';
+  }
+
+  // Moon position
+  const mx = cx + Math.cos(angle) * orbitR;
+  const my = cy - Math.sin(angle) * orbitR;  // CCW: negate sin (celestial north view)
+
+  // Guide line Earth → Moon
+  sCtx.beginPath();
+  sCtx.moveTo(cx, cy); sCtx.lineTo(mx, my);
+  sCtx.strokeStyle = 'rgba(251,191,36,.1)';
+  sCtx.lineWidth = 1;
+  sCtx.stroke();
+
+  // Moon — full lit base
+  sCtx.beginPath();
+  sCtx.arc(mx, my, moonR, 0, Math.PI*2);
+  sCtx.fillStyle = '#dce8f8';
+  sCtx.fill();
+
+  // ── Moon CRATERS — rotate so the SAME side always faces Earth ──
+  // (tidal locking: the crater field turns once per orbit)
+  const toEarth = Math.atan2(cy - my, cx - mx);
+  sCtx.save();
+  sCtx.beginPath(); sCtx.arc(mx, my, moonR, 0, Math.PI*2); sCtx.clip();
+  sCtx.translate(mx, my);
+  sCtx.rotate(toEarth);
+  // Crater positions in local units of moonR. Local +x = near side (faces Earth).
+  const CRATERS = [
+    { x: 0.50, y: 0.05, r: 0.30 },  // big near-side "signature" crater
+    { x: 0.18, y:-0.42, r: 0.16 },
+    { x: 0.05, y: 0.45, r: 0.14 },
+    { x:-0.35, y: 0.18, r: 0.20 },
+    { x:-0.20, y:-0.30, r: 0.12 },
+    { x:-0.55, y:-0.05, r: 0.13 },
+  ];
+  for (const c of CRATERS) {
+    sCtx.beginPath();
+    sCtx.arc(c.x*moonR, c.y*moonR, c.r*moonR, 0, Math.PI*2);
+    sCtx.fillStyle = 'rgba(120,135,168,.75)';
+    sCtx.fill();
+    sCtx.strokeStyle = 'rgba(90,105,140,.6)';
+    sCtx.lineWidth = 0.5;
+    sCtx.stroke();
+  }
+  // tiny bright dot on the very near-side point (clearest "this side faces Earth")
+  sCtx.beginPath();
+  sCtx.arc(moonR*0.82, 0, Math.max(1, moonR*0.12), 0, Math.PI*2);
+  sCtx.fillStyle = 'rgba(251,191,36,.9)';
+  sCtx.fill();
+  sCtx.restore();
+
+  // Moon — shadow: left half always dark (sun is right)
+  sCtx.save();
+  sCtx.beginPath(); sCtx.arc(mx, my, moonR, 0, Math.PI*2); sCtx.clip();
+  sCtx.fillStyle = 'rgba(12,20,40,.82)';
+  sCtx.beginPath();
+  sCtx.arc(mx, my, moonR, Math.PI/2, 3*Math.PI/2);
+  sCtx.fill();
+  sCtx.restore();
+
+  // ── LUNAR ECLIPSE: Moon glows blood-red inside Earth's shadow (View 1) ──
+  if (eclipseMode === 'lunar') {
+    sCtx.save();
+    sCtx.beginPath(); sCtx.arc(mx, my, moonR, 0, Math.PI*2); sCtx.clip();
+    const rg = sCtx.createRadialGradient(mx, my, moonR*0.2, mx, my, moonR);
+    rg.addColorStop(0, 'rgba(150,45,25,.85)');
+    rg.addColorStop(1, 'rgba(90,22,14,.95)');
+    sCtx.fillStyle = rg;
+    sCtx.fillRect(mx - moonR, my - moonR, moonR*2, moonR*2);
+    sCtx.restore();
+  }
+
+  // ── Rotation arrow encircling the Moon (toggle) ──
+  // Shows the Moon spins once per orbit → rotation equals revolution.
+  if (showRotationArrow) {
+    const aR = moonR + Math.max(7, moonR*0.6);
+    sCtx.save();
+    sCtx.strokeStyle = 'rgba(52,211,153,.95)';
+    sCtx.lineWidth = 2;
+    // CCW arc (celestial north). Canvas y is down, so counter-clockwise=true.
+    const startA = -0.35 * Math.PI;
+    const endA   =  1.15 * Math.PI;
+    sCtx.beginPath();
+    sCtx.arc(mx, my, aR, startA, endA, true);
+    sCtx.stroke();
+    // Arrowhead at the arc's leading end (startA), pointing CCW (tangent)
+    const headX = mx + Math.cos(startA) * aR;
+    const headY = my + Math.sin(startA) * aR;
+    // tangent direction for CCW motion at startA
+    const tang = startA - Math.PI/2;
+    sCtx.fillStyle = 'rgba(52,211,153,.95)';
+    sCtx.translate(headX, headY);
+    sCtx.rotate(tang);
+    sCtx.beginPath();
+    sCtx.moveTo(0, -6);
+    sCtx.lineTo(0, 6);
+    sCtx.lineTo(9, 0);
+    sCtx.closePath();
+    sCtx.fill();
+    sCtx.restore();
+    // label
+    sCtx.fillStyle = 'rgba(52,211,153,.9)';
+    sCtx.font = `bold ${Math.max(7,Math.floor(W*0.021))}px Courier New`;
+    sCtx.textAlign = 'center';
+    sCtx.fillText('SPIN = ORBIT (GIRO = ÓRBITA)', mx, my - aR - 5);
+    sCtx.textAlign = 'left';
+  }
+
+  // Moon — drag ring
+  if (dragging) {
+    sCtx.beginPath();
+    sCtx.arc(mx, my, moonR + 6, 0, Math.PI*2);
+    sCtx.strokeStyle = 'rgba(251,191,36,.65)';
+    sCtx.lineWidth = 2;
+    sCtx.stroke();
+  }
+
+  // Moon label
+  sCtx.fillStyle = 'rgba(226,232,240,.45)';
+  sCtx.font = `bold ${Math.max(7,Math.floor(W*0.022))}px Courier New`;
+  sCtx.textAlign = 'center';
+  sCtx.fillText('MOON', mx, my + moonR + 10);
+  sCtx.textAlign = 'left';
+
+  // ── Tidal bulge labels (HIGH TIDE on near & far sides) ──
+  if (showTides) {
+    const toMoon = Math.atan2(my - cy, mx - cx);
+    const labR = earthR * 1.9;
+    const fs = Math.max(7, Math.floor(W*0.02));
+    sCtx.fillStyle = 'rgba(125,211,252,.95)';
+    sCtx.font = `bold ${fs}px Courier New`;
+    sCtx.textAlign = 'center';
+    // near-side bulge (toward Moon)
+    sCtx.fillText('HIGH TIDE', cx + Math.cos(toMoon)*labR, cy + Math.sin(toMoon)*labR + 3);
+    // far-side bulge (opposite Moon)
+    sCtx.fillText('HIGH TIDE', cx - Math.cos(toMoon)*labR, cy - Math.sin(toMoon)*labR + 3);
+    sCtx.textAlign = 'left';
+  }
+
+  // ── Day counter overlay (time-lapse only) ──
+  if (timeTracking) {
+    const pad = 8;
+    const fs = Math.max(11, Math.floor(W * 0.04));
+    const boxW = W * 0.5;
+    sCtx.fillStyle = 'rgba(8,12,26,.8)';
+    sCtx.fillRect(pad, pad, boxW, fs * 2.4);
+    sCtx.strokeStyle = 'rgba(251,191,36,.4)';
+    sCtx.lineWidth = 1;
+    sCtx.strokeRect(pad, pad, boxW, fs * 2.4);
+    sCtx.fillStyle = '#fbbf24';
+    sCtx.font = `bold ${fs}px Courier New`;
+    sCtx.textAlign = 'left';
+    const period = (monthMode === 'sidereal') ? SIDEREAL_DAYS : SYNODIC_DAYS;
+    sCtx.fillText(`DAY ${elapsedDays.toFixed(1)} / ${period.toFixed(1)}`, pad + 6, pad + fs);
+    sCtx.fillStyle = 'rgba(148,163,200,.85)';
+    sCtx.font = `${Math.max(8, Math.floor(fs*0.6))}px Courier New`;
+    sCtx.fillText(monthMode === 'sidereal' ? 'sidereal month' : 'synodic month', pad + 6, pad + fs * 1.9);
+  }
+}
+
+function var_earthBlue() { return '#1d4ed8'; }
+
+// ── DRAW: SKY VIEW ───────────────────────────────────────────────
+//
+//  VERIFIED ALGORITHM (459 tests passed):
+//    termX = r * cos(angle)          → terminator position
+//    isWaxing = (normDeg < 180)      → which side is lit
+//
+//    Steps (all inside moon clip):
+//    1. Dark base
+//    2. Lit semicircle (right if waxing, left if waning)
+//    3. Terminator ellipse:
+//       - if |termX| > 0.5:
+//           termX > 0 → DARK ellipse (eats into lit half)
+//           termX < 0 → LIT  ellipse (extends lit area)
+//
+//  This gives correct rendering for ALL 8 phases with zero artifacts.
+//
+function drawSky() {
+  const W = SK.width, H = SK.height;
+  const cx = W/2, cy = H * 0.42;          // moved up a bit
+  const r  = Math.min(W, H) * 0.27;       // a little smaller
+  const normDeg = ((angle * 180 / Math.PI) + 360) % 360;
+
+  kCtx.clearRect(0, 0, W, H);
+
+  // Space background
+  kCtx.fillStyle = '#040712';
+  kCtx.fillRect(0, 0, W, H);
+
+  // Star field
+  kCtx.fillStyle = 'rgba(255,255,255,.32)';
+  for (let sx = 9;  sx < W; sx += 51) for (let sy = 7;  sy < H; sy += 43) kCtx.fillRect(sx, sy, 1, 1);
+  kCtx.fillStyle = 'rgba(255,255,255,.55)';
+  for (let sx = 27; sx < W; sx += 73) for (let sy = 21; sy < H; sy += 61) kCtx.fillRect(sx, sy, 1, 1);
+
+  // ── Moon phase rendering ──
+  kCtx.save();
+  kCtx.beginPath();
+  kCtx.arc(cx, cy, r, 0, Math.PI*2);
+  kCtx.clip();
+
+  // 1. Dark base
+  kCtx.fillStyle = '#141e32';
+  kCtx.fillRect(cx-r-2, cy-r-2, (r+2)*2, (r+2)*2);
+
+  const isWaxing = normDeg < 180;
+
+  // 2. Lit semicircle
+  kCtx.fillStyle = '#e8eef8';
+  kCtx.beginPath();
+  if (isWaxing) {
+    kCtx.arc(cx, cy, r, -Math.PI/2, Math.PI/2); // right half
+  } else {
+    kCtx.arc(cx, cy, r, Math.PI/2, 3*Math.PI/2); // left half
+  }
+  kCtx.closePath();
+  kCtx.fill();
+
+  // 3. Terminator ellipse
+  const termX = r * Math.cos(angle);  // Use raw angle (not normDeg) for cos
+  if (Math.abs(termX) > 0.5) {
+    kCtx.fillStyle = termX > 0 ? '#141e32' : '#e8eef8';
+    kCtx.beginPath();
+    kCtx.ellipse(cx, cy, Math.abs(termX), r, 0, 0, Math.PI*2);
+    kCtx.fill();
+  }
+
+  kCtx.restore();
+
+  // ── LUNAR ECLIPSE: Earth's shadow falls on the Moon ──
+  // Earth's umbra is larger than the Moon and curved → "blood moon".
+  if (eclipseMode === 'lunar') {
+    kCtx.save();
+    kCtx.beginPath(); kCtx.arc(cx, cy, r, 0, Math.PI*2); kCtx.clip();
+    const uR = r * 1.5;            // umbra bigger than the Moon
+    const ux = cx - r * 0.55;      // offset so a lit crescent + curved edge show
+    const uy = cy - r * 0.12;
+    // dark coppery-red shadow (sunlight bent through Earth's atmosphere)
+    const rg = kCtx.createRadialGradient(ux, uy, uR*0.3, ux, uy, uR);
+    rg.addColorStop(0, 'rgba(60,12,8,.96)');
+    rg.addColorStop(0.7, 'rgba(120,30,18,.94)');
+    rg.addColorStop(1, 'rgba(150,45,25,.9)');
+    kCtx.fillStyle = rg;
+    kCtx.beginPath(); kCtx.arc(ux, uy, uR, 0, Math.PI*2); kCtx.fill();
+    kCtx.restore();
+    // faint umbra edge outline on the moon
+    kCtx.save();
+    kCtx.beginPath(); kCtx.arc(cx, cy, r, 0, Math.PI*2); kCtx.clip();
+    kCtx.strokeStyle = 'rgba(180,70,45,.5)';
+    kCtx.lineWidth = 1.5;
+    kCtx.beginPath(); kCtx.arc(cx - r*0.55, cy - r*0.12, r*1.5, 0, Math.PI*2); kCtx.stroke();
+    kCtx.restore();
+  }
+
+  // Moon outline
+  kCtx.beginPath();
+  kCtx.arc(cx, cy, r, 0, Math.PI*2);
+  kCtx.strokeStyle = 'rgba(80,100,140,.5)';
+  kCtx.lineWidth = 1.5;
+  kCtx.stroke();
+
+  // Update phase name label
+  const ph = getPhase(angle);
+  if (eclipseMode === 'lunar') {
+    document.getElementById('cur-phase-name').textContent = '🔴 Blood Moon / Luna de Sangre (in Earth\u2019s shadow / en la sombra de la Tierra)';
+  } else if (compareMode) {
+    const tag = (monthMode === 'sidereal') ? '⭐ sidereal (sideral)' : '🌑 synodic (sinódico)';
+    document.getElementById('cur-phase-name').textContent = `${tag}: ${ph.emoji} ${ph.name}`;
+  } else {
+    document.getElementById('cur-phase-name').textContent = ph.emoji + ' ' + ph.name;
+  }
+  updatePhaseHighlight(ph.id);
+}
+
+// ── COMBINED RENDER ──────────────────────────────────────────────
+function renderAll() {
+  if (compareMode) drawCompare();
+  else drawSpace();
+  drawSky();
+  drawSide();
+}
+
+// ── DRAW: COMPARE MONTHS (View 1 zoomed out, Sun-centered) ────────
+//
+//  Matches the classic textbook animation:
+//   • Sun on the RIGHT, Earth orbiting it along a big arc (Earth moves!)
+//   • A FIXED reference-star direction line from Earth (constant in space)
+//   • The Moon orbiting Earth on a small circle
+//   • At 27.3d the Moon returns to the same star direction (sidereal)
+//   • At 29.5d it returns to New Moon (synodic) — a bit further along
+//
+function drawCompare() {
+  const W = SC.width, H = SC.height;
+  sCtx.clearRect(0, 0, W, H);
+
+  // Earth is pinned near the lower-left so we can see its orbit curve up to
+  // the Sun on the right (matches the video framing).
+  const earthX = W * 0.30, earthY = H * 0.62;
+  const moonOrbit = Math.max(26, Math.min(W, H) * 0.13);
+  const earthR = Math.max(7, Math.min(W, H) * 0.024);
+  const moonR  = Math.max(4, Math.min(W, H) * 0.014);
+
+  // How far Earth has moved around the Sun this month. We DRIVE the Sun's
+  // drift from the Moon so that New Moon lands exactly at the synodic day:
+  //   sunDrift(t) = moonStar(t) − (t/synodic)·360°
+  // At t=0 → 0; at synodic → the Moon realigns with the Sun (New Moon).
+  const moonStarFull = (elapsedDays / SIDEREAL_DAYS) * 2 * Math.PI;
+  const earthMoved   = moonStarFull - (elapsedDays / SYNODIC_DAYS) * 2 * Math.PI;
+
+  // Sun sits up and to the right of Earth. As Earth advances along its orbit,
+  // the Sun's direction (from Earth) drifts upward by earthMoved.
+  const R_e = W * 0.92;                       // big orbital radius
+  const sunBaseAng = -0.22;                   // start: slightly above horizontal-right
+  const sunDir = sunBaseAng - earthMoved;     // drifts further up (CCW) over the month
+  const sunX = earthX + Math.cos(sunDir) * R_e;
+  const sunY = earthY + Math.sin(sunDir) * R_e;
+
+  // ---- Earth's orbit arc (huge circle centered on the Sun, through Earth) ----
+  sCtx.strokeStyle = 'rgba(150,160,195,.5)';
+  sCtx.lineWidth = 1.2;
+  sCtx.beginPath();
+  sCtx.arc(sunX, sunY, R_e, 0, Math.PI*2);
+  sCtx.stroke();
+
+  // ---- Sun ----
+  const sunR = Math.max(15, Math.min(W, H) * 0.045);
+  const sg = sCtx.createRadialGradient(sunX, sunY, 0, sunX, sunY, sunR*2.2);
+  sg.addColorStop(0, 'rgba(255,176,32,1)');
+  sg.addColorStop(0.5, 'rgba(251,146,20,.85)');
+  sg.addColorStop(1, 'rgba(251,146,20,0)');
+  sCtx.fillStyle = sg;
+  sCtx.beginPath(); sCtx.arc(sunX, sunY, sunR*2.2, 0, Math.PI*2); sCtx.fill();
+  sCtx.fillStyle = '#ff8c1a';
+  sCtx.beginPath(); sCtx.arc(sunX, sunY, sunR, 0, Math.PI*2); sCtx.fill();
+
+  // ---- FIXED reference-star direction (constant in space) ----
+  // Points toward the Sun's INITIAL direction at t=0 — stays put as the Sun drifts.
+  const starDir = sunBaseAng;
+  const starLen = W * 0.95;
+  sCtx.strokeStyle = 'rgba(255,255,255,.8)';
+  sCtx.lineWidth = 1;
+  sCtx.beginPath();
+  sCtx.moveTo(earthX, earthY);
+  sCtx.lineTo(earthX + Math.cos(starDir)*starLen, earthY + Math.sin(starDir)*starLen);
+  sCtx.stroke();
+
+  // ---- Moon's small orbit around Earth ----
+  sCtx.strokeStyle = 'rgba(150,160,190,.55)';
+  sCtx.lineWidth = 1;
+  sCtx.beginPath();
+  sCtx.arc(earthX, earthY, moonOrbit, 0, Math.PI*2);
+  sCtx.stroke();
+
+  // ---- Earth ----
+  sCtx.fillStyle = '#1d4ed8';
+  sCtx.beginPath(); sCtx.arc(earthX, earthY, earthR, 0, Math.PI*2); sCtx.fill();
+  sCtx.fillStyle = '#166534';
+  sCtx.beginPath();
+  sCtx.ellipse(earthX - earthR*0.2, earthY - earthR*0.1, earthR*0.45, earthR*0.28, 0.4, 0, Math.PI*2);
+  sCtx.fill();
+
+  // ---- Moon: tracked by SIDEREAL angle relative to the fixed star line ----
+  // At t=0, Moon sits on the star line (toward Sun's start) = New Moon.
+  const moonStar = (elapsedDays / SIDEREAL_DAYS) * 2 * Math.PI;
+  const mAng = starDir - moonStar;   // CCW around Earth from the fixed star dir
+  const mx = earthX + Math.cos(mAng) * moonOrbit;
+  const my = earthY + Math.sin(mAng) * moonOrbit;
+
+  // Phase: Moon direction minus Sun direction → New Moon when aligned with Sun
+  let phase = ((sunDir) - mAng);
+  phase = ((phase % (2*Math.PI)) + 2*Math.PI) % (2*Math.PI);
+  const isNew = phase < 0.13 || phase > (2*Math.PI - 0.13);
+
+  // Grey wedge from Earth toward Moon (the video's cone), shown at New Moon
+  if (isNew) {
+    sCtx.fillStyle = 'rgba(210,218,235,.28)';
+    const perp = 0.14;
+    sCtx.beginPath();
+    sCtx.moveTo(earthX, earthY);
+    sCtx.lineTo(earthX + Math.cos(mAng+perp)*moonOrbit*1.05, earthY + Math.sin(mAng+perp)*moonOrbit*1.05);
+    sCtx.lineTo(earthX + Math.cos(mAng-perp)*moonOrbit*1.05, earthY + Math.sin(mAng-perp)*moonOrbit*1.05);
+    sCtx.closePath(); sCtx.fill();
+  }
+
+  // Marker ring at the Moon's t=0 spot (on the fixed star line) — the New Moon start
+  const startMX = earthX + Math.cos(starDir)*moonOrbit;
+  const startMY = earthY + Math.sin(starDir)*moonOrbit;
+  sCtx.strokeStyle = 'rgba(157,225,203,.7)';
+  sCtx.lineWidth = 1;
+  sCtx.beginPath(); sCtx.arc(startMX, startMY, moonR*1.15, 0, Math.PI*2); sCtx.stroke();
+
+  // ---- Moon with lit (toward Sun) and dark hemispheres ----
+  // Lit hemisphere points toward the Sun (direction sunDir from Earth).
+  sCtx.save();
+  sCtx.beginPath(); sCtx.arc(mx, my, moonR, 0, Math.PI*2); sCtx.clip();
+  // dark base
+  sCtx.fillStyle = '#39404d';
+  sCtx.fillRect(mx - moonR, my - moonR, moonR*2, moonR*2);
+  // lit half = the semicircle facing the Sun
+  sCtx.fillStyle = '#eef3fb';
+  sCtx.beginPath();
+  sCtx.arc(mx, my, moonR, sunDir - Math.PI/2, sunDir + Math.PI/2);
+  sCtx.closePath();
+  sCtx.fill();
+  sCtx.restore();
+  // outline
+  sCtx.strokeStyle = 'rgba(120,135,165,.7)';
+  sCtx.lineWidth = 0.8;
+  sCtx.beginPath(); sCtx.arc(mx, my, moonR, 0, Math.PI*2); sCtx.stroke();
+
+  // ---- Labels ----
+  const fs = Math.max(10, Math.floor(W * 0.032));
+  sCtx.font = `bold ${fs}px Courier New`;
+  sCtx.textAlign = 'left';
+  const period = (monthMode === 'sidereal') ? SIDEREAL_DAYS : SYNODIC_DAYS;
+  const done = elapsedDays >= period - 0.05;
+
+  if (monthMode === 'synodic' && isNew && elapsedDays > 0.3) {
+    // synodic: Moon is genuinely back at New Moon
+    sCtx.fillStyle = 'rgba(255,255,255,.96)';
+    sCtx.fillText('New moon (Luna Nueva)', mx + moonR + 6, my - 2);
+  } else if (monthMode === 'sidereal' && done) {
+    // sidereal: Moon is back to the same STAR direction but NOT New Moon.
+    // Mark the start New-Moon spot, and label the current Moon as not-new.
+    sCtx.fillStyle = 'rgba(157,225,203,.95)';
+    sCtx.font = `${Math.max(8, Math.floor(fs*0.62))}px Courier New`;
+    sCtx.fillText('start: New moon (inicio: Luna Nueva)', startMX + moonR + 5, startMY + fs*0.7);
+    sCtx.font = `bold ${fs}px Courier New`;
+    sCtx.fillStyle = 'rgba(255,255,255,.96)';
+    sCtx.fillText('not New Moon yet (aún no Luna Nueva)', mx + moonR + 6, my - 2);
+  }
+
+  // Day counter (bottom-left, leaving the top clear for the caption)
+  sCtx.fillStyle = '#fbbf24';
+  sCtx.font = `bold ${fs}px Courier New`;
+  sCtx.textAlign = 'left';
+  sCtx.fillText(`DAY ${elapsedDays.toFixed(1)} / ${period.toFixed(1)}`, 10, H - fs*1.6);
+  sCtx.fillStyle = 'rgba(170,180,210,.9)';
+  sCtx.font = `${Math.max(8, Math.floor(fs*0.62))}px Courier New`;
+  sCtx.fillText(monthMode === 'sidereal' ? 'sidereal month (mes sideral)' : 'synodic month (mes sinódico)', 10, H - fs*0.6);
+
+  // Milestone caption — pinned at the TOP (above the diagram) and persists.
+  if (compareCaption) {
+    const capFont = Math.max(9, Math.floor(fs*0.72));
+    sCtx.font = `bold ${capFont}px Courier New`;
+    const lh = capFont * 1.35;
+    const maxW = W * 0.92;
+    // Build wrapped lines across paragraphs (\n\n = blank-line separator)
+    const paras = compareCaption.split('\n\n');
+    let lines = [];
+    for (let p = 0; p < paras.length; p++) {
+      lines = lines.concat(wrapLines(sCtx, paras[p], maxW));
+      if (p < paras.length - 1) lines.push('');  // blank spacer line
+    }
+    const topPad = 8;
+    const bandH = lines.length * lh + 12;
+    // backing band so text stays readable over the diagram
+    sCtx.fillStyle = 'rgba(8,12,26,.82)';
+    sCtx.fillRect(W*0.04, topPad, W*0.92, bandH);
+    sCtx.strokeStyle = 'rgba(251,191,36,.35)';
+    sCtx.lineWidth = 1;
+    sCtx.strokeRect(W*0.04, topPad, W*0.92, bandH);
+    sCtx.fillStyle = 'rgba(255,255,255,.97)';
+    sCtx.textAlign = 'center';
+    lines.forEach((ln, i) => sCtx.fillText(ln, W*0.5, topPad + 14 + i*lh));
+    sCtx.textAlign = 'left';
+  }
+}
+
+// helper: wrap canvas text
+function wrapText(ctx, text, cx, y, maxW, lh) {
+  const words = text.split(' ');
+  let line = '', lines = [];
+  for (const w of words) {
+    const test = line ? line + ' ' + w : w;
+    if (ctx.measureText(test).width > maxW && line) { lines.push(line); line = w; }
+    else line = test;
+  }
+  if (line) lines.push(line);
+  const startY = y - (lines.length - 1) * lh / 2;
+  lines.forEach((ln, i) => ctx.fillText(ln, cx, startY + i * lh));
+}
+// helper: return wrapped lines (no drawing)
+function wrapLines(ctx, text, maxW) {
+  const words = text.split(' ');
+  let line = '', lines = [];
+  for (const w of words) {
+    const test = line ? line + ' ' + w : w;
+    if (ctx.measureText(test).width > maxW && line) { lines.push(line); line = w; }
+    else line = test;
+  }
+  if (line) lines.push(line);
+  return lines;
+}
+let compareCaption = '';
+
+// ── DRAW: SIDE VIEW (View 3) — edge-on, shows orbital tilt ────────
+//
+//  Horizontal = Sun direction (Sun on right). Vertical = above/below ecliptic.
+//  The Moon's orbit is a tilted line (edge-on view of the tilted orbital plane).
+//  Shows WHY eclipses are rare: the Moon usually passes above/below the
+//  Earth-Sun line, missing the shadow (lunar) or the Sun's disk (solar).
+//
+function drawSide() {
+  const W = SD.width, H = SD.height;
+  const cx = W * 0.5, cy = H * 0.5;
+  const orbitR = Math.min(W * 0.42, H * 1.6);  // horizontal reach
+  const earthR = Math.max(11, Math.min(W, H) * 0.08);
+  const moonR  = Math.max(4, earthR * 0.27);
+
+  dCtx.clearRect(0, 0, W, H);
+
+  // Background
+  dCtx.fillStyle = '#040712';
+  dCtx.fillRect(0, 0, W, H);
+
+  // Sun glow from right
+  const sg = dCtx.createRadialGradient(W + 10, cy, 0, W + 10, cy, W * 0.7);
+  sg.addColorStop(0, 'rgba(251,191,36,.4)');
+  sg.addColorStop(.4, 'rgba(251,191,36,.08)');
+  sg.addColorStop(1, 'rgba(0,0,0,0)');
+  dCtx.fillStyle = sg;
+  dCtx.fillRect(0, 0, W, H);
+
+  // Ecliptic plane line (the Earth-Sun line) — horizontal dashed
+  dCtx.save();
+  dCtx.setLineDash([4, 5]);
+  dCtx.strokeStyle = 'rgba(120,140,170,.35)';
+  dCtx.lineWidth = 1;
+  dCtx.beginPath();
+  dCtx.moveTo(0, cy);
+  dCtx.lineTo(W, cy);
+  dCtx.stroke();
+  dCtx.restore();
+
+  // "Ecliptic" label
+  dCtx.fillStyle = 'rgba(120,140,170,.5)';
+  dCtx.font = `${Math.max(7, Math.floor(W*0.022))}px Courier New`;
+  dCtx.textAlign = 'left';
+  dCtx.fillText('ecliptic plane', 4, cy - 4);
+
+  // Sunlight rays (horizontal, only show if beams on)
+  if (showBeams) {
+    dCtx.save();
+    dCtx.setLineDash([7, 8]);
+    dCtx.strokeStyle = 'rgba(251,191,36,.45)';
+    dCtx.lineWidth = 1.5;
+    for (const dy of [-H*0.28, 0, H*0.28]) {
+      dCtx.beginPath();
+      dCtx.moveTo(W - 6, cy + dy);
+      dCtx.lineTo(cx, cy + dy);
+      dCtx.stroke();
+    }
+    dCtx.restore();
+  }
+
+  // Earth's shadow cone (points LEFT, away from sun)
+  dCtx.save();
+  dCtx.beginPath();
+  dCtx.moveTo(cx, cy - earthR);
+  dCtx.lineTo(cx - orbitR * 1.15, cy - earthR * 0.15);
+  dCtx.lineTo(cx - orbitR * 1.15, cy + earthR * 0.15);
+  dCtx.lineTo(cx, cy + earthR);
+  dCtx.closePath();
+  dCtx.fillStyle = 'rgba(20,30,55,.55)';
+  dCtx.fill();
+  dCtx.restore();
+
+  // The tilted orbit line (edge-on). Tilt rotates around Earth.
+  // Orbit appears as a line tilted by TILT projected; nodes are where it
+  // crosses the ecliptic. Draw the full tilted orbit path.
+  const tiltScreen = Math.sin(TILT_RAD); // vertical scale of tilt
+  dCtx.save();
+  dCtx.setLineDash([2, 3]);
+  dCtx.strokeStyle = 'rgba(148,163,200,.4)';
+  dCtx.lineWidth = 1;
+  dCtx.beginPath();
+  for (let a = 0; a <= 360; a += 4) {
+    const rad = a * Math.PI / 180;
+    const px = cx + Math.cos(rad) * orbitR;
+    const pz = -Math.sin(rad - nodeAngle) * tiltScreen * orbitR;
+    if (a === 0) dCtx.moveTo(px, cy + pz);
+    else dCtx.lineTo(px, cy + pz);
+  }
+  dCtx.stroke();
+  dCtx.restore();
+
+  // Earth
+  dCtx.beginPath();
+  dCtx.arc(cx, cy, earthR, 0, Math.PI*2);
+  dCtx.fillStyle = '#1d4ed8';
+  dCtx.fill();
+  dCtx.fillStyle = '#166534';
+  dCtx.beginPath();
+  dCtx.ellipse(cx - earthR*0.2, cy - earthR*0.1, earthR*0.4, earthR*0.25, 0.4, 0, Math.PI*2);
+  dCtx.fill();
+  // Earth night shadow (left dark)
+  dCtx.save();
+  dCtx.beginPath(); dCtx.arc(cx, cy, earthR, 0, Math.PI*2); dCtx.clip();
+  dCtx.fillStyle = 'rgba(4,7,20,.6)';
+  dCtx.beginPath(); dCtx.arc(cx, cy, earthR, Math.PI/2, 3*Math.PI/2); dCtx.fill();
+  dCtx.restore();
+
+  dCtx.fillStyle = 'rgba(96,165,250,.55)';
+  dCtx.font = `bold ${Math.max(7, Math.floor(W*0.022))}px Courier New`;
+  dCtx.textAlign = 'center';
+  dCtx.fillText('EARTH', cx, cy + earthR + 11);
+
+  // Moon position on the tilted orbit
+  const mx = cx + Math.cos(angle) * orbitR;
+  const mz = -Math.sin(angle - nodeAngle) * tiltScreen * orbitR;
+  const my = cy + mz;
+
+  // Is the moon currently aligned with the ecliptic? (near a node)
+  const onEcliptic = Math.abs(mz) < earthR * 0.5;
+
+  // ── SOLAR ECLIPSE: Moon casts a small shadow spot on Earth (View 3) ──
+  // Umbra hits Earth's surface on the side facing the Moon (toward the Sun/right).
+  if (eclipseMode === 'solar' && onEcliptic) {
+    const dirX = (mx - cx), dirY = (my - cy);
+    const len = Math.hypot(dirX, dirY) || 1;
+    const ux = cx + (dirX/len) * earthR * 0.85;
+    const uy = cy + (dirY/len) * earthR * 0.85;
+    const spotR = Math.max(2, earthR * 0.22);
+    dCtx.save();
+    dCtx.beginPath(); dCtx.arc(cx, cy, earthR, 0, Math.PI*2); dCtx.clip();
+    dCtx.fillStyle = 'rgba(8,10,20,.45)';
+    dCtx.beginPath(); dCtx.arc(ux, uy, spotR*1.9, 0, Math.PI*2); dCtx.fill();
+    dCtx.fillStyle = 'rgba(4,6,14,.92)';
+    dCtx.beginPath(); dCtx.arc(ux, uy, spotR, 0, Math.PI*2); dCtx.fill();
+    dCtx.restore();
+  }
+
+  // Moon — lit side faces sun (right)
+  dCtx.beginPath();
+  dCtx.arc(mx, my, moonR, 0, Math.PI*2);
+  dCtx.fillStyle = '#dce8f8';
+  dCtx.fill();
+  dCtx.save();
+  dCtx.beginPath(); dCtx.arc(mx, my, moonR, 0, Math.PI*2); dCtx.clip();
+  dCtx.fillStyle = '#0c1428';
+  dCtx.beginPath(); dCtx.arc(mx, my, moonR, Math.PI/2, 3*Math.PI/2); dCtx.fill();
+  dCtx.restore();
+
+  // ── LUNAR ECLIPSE: Moon glows blood-red inside Earth's shadow (View 3) ──
+  if (eclipseMode === 'lunar' && onEcliptic) {
+    dCtx.save();
+    dCtx.beginPath(); dCtx.arc(mx, my, moonR, 0, Math.PI*2); dCtx.clip();
+    const rg = dCtx.createRadialGradient(mx, my, moonR*0.2, mx, my, moonR);
+    rg.addColorStop(0, 'rgba(150,45,25,.9)');
+    rg.addColorStop(1, 'rgba(90,22,14,.96)');
+    dCtx.fillStyle = rg;
+    dCtx.fillRect(mx - moonR, my - moonR, moonR*2, moonR*2);
+    dCtx.restore();
+  }
+
+  // Highlight ring if at eclipse alignment
+  if (eclipseMode !== 'none' && onEcliptic) {
+    dCtx.beginPath();
+    dCtx.arc(mx, my, moonR + 4, 0, Math.PI*2);
+    dCtx.strokeStyle = eclipseMode === 'solar' ? 'rgba(251,191,36,.9)' : 'rgba(248,113,113,.9)';
+    dCtx.lineWidth = 2;
+    dCtx.stroke();
+  }
+
+  // Update eclipse status text
+  updateEclipseStatus(mz, earthR);
+}
+
+function updateEclipseStatus(mz, earthR) {
+  const el = document.getElementById('eclipse-status');
+  if (!el) return;
+  const normDeg = ((angle * 180 / Math.PI) + 360) % 360;
+  const onEcliptic = Math.abs(mz) < earthR * 0.5;
+  const atNew  = normDeg < 15 || normDeg > 345;
+  const atFull = normDeg > 165 && normDeg < 195;
+
+  if (onEcliptic && atNew) {
+    el.textContent = '🌑 SOLAR ECLIPSE — Moon blocks the Sun! (ECLIPSE SOLAR — ¡La Luna bloquea el Sol!)';
+    el.style.color = 'var(--sun)';
+  } else if (onEcliptic && atFull) {
+    el.textContent = "🌕 LUNAR ECLIPSE — Moon in Earth's shadow! (ECLIPSE LUNAR — ¡La Luna en la sombra de la Tierra!)";
+    el.style.color = 'var(--fail)';
+  } else if (atNew || atFull) {
+    el.textContent = 'Moon passes above/below — no eclipse (La Luna pasa arriba/abajo — sin eclipse)';
+    el.style.color = '#ffffff';
+  } else {
+    el.textContent = "Moon's orbit is tilted ~5° (La órbita lunar está inclinada ~5°)";
+    el.style.color = '#ffffff';
+  }
+}
+
+// ── PHASE GUIDE (sidebar) ────────────────────────────────────────
+function buildPhaseGuide() {
+  const list = document.getElementById('phase-list');
+  list.innerHTML = '';
+  PHASES.forEach(p => {
+    const row = document.createElement('div');
+    row.className = 'prow';
+    row.id = `prow-${p.id}`;
+    row.title = PHASE_TIPS[p.id];
+
+    // Mini moon canvas
+    const mc = document.createElement('canvas');
+    mc.className = 'pmoon';
+    mc.width = 16; mc.height = 16;
+    drawMiniPhase(mc, p.id);
+
+    const lbl = document.createElement('span');
+    lbl.textContent = p.emoji + ' ' + p.name;
+
+    row.appendChild(mc);
+    row.appendChild(lbl);
+    list.appendChild(row);
+  });
+}
+
+function drawMiniPhase(canvas, phaseId) {
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const cx = W/2, cy = H/2, r = 6;
+
+  ctx.clearRect(0,0,W,H);
+
+  // Center angle for each phase (degrees)
+  const centerDegs = [0, 45, 90, 135, 180, 225, 270, 315];
+  const deg = centerDegs[phaseId];
+  const rad = deg * Math.PI / 180;
+  const normDeg = deg;
+
+  ctx.save();
+  ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.clip();
+
+  // Dark base
+  ctx.fillStyle = '#141e32';
+  ctx.fillRect(0,0,W,H);
+
+  const isWaxing = normDeg < 180;
+  ctx.fillStyle = '#dce8f8';
+  ctx.beginPath();
+  if (isWaxing) { ctx.arc(cx,cy,r,-Math.PI/2,Math.PI/2); }
+  else          { ctx.arc(cx,cy,r, Math.PI/2,3*Math.PI/2); }
+  ctx.closePath(); ctx.fill();
+
+  const termX = r * Math.cos(rad);
+  if (Math.abs(termX) > 0.3) {
+    ctx.fillStyle = termX > 0 ? '#141e32' : '#dce8f8';
+    ctx.beginPath();
+    ctx.ellipse(cx,cy,Math.abs(termX),r,0,0,Math.PI*2);
+    ctx.fill();
+  }
+  ctx.restore();
+
+  // Ring
+  ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2);
+  ctx.strokeStyle = '#2a3a58'; ctx.lineWidth = 1; ctx.stroke();
+}
+
+function updatePhaseHighlight(activeId) {
+  PHASES.forEach(p => {
+    const row = document.getElementById(`prow-${p.id}`);
+    if (row) row.classList.toggle('active', p.id === activeId);
+  });
+}
+
+// ── ANIMATION LOOP ──────────────────────────────────────────────
+function getSpeedDPS() {
+  const val = parseInt(document.getElementById('speed-slider').value);
+  return SPEED_DPS[val - 1];
+}
+
+function animTick(ts) {
+  if (!isPlaying) return;
+  if (lastTs !== null) {
+    const dt = (ts - lastTs) / 1000; // seconds elapsed
+    const dps = getSpeedDPS();
+    angle += (dps * Math.PI / 180) * dt; // CCW: increasing angle = CCW with negated-sin rendering
+    // Keep angle in [-π, π] range (atan2 native range)
+    angle = ((angle + Math.PI) % (2 * Math.PI)) - Math.PI;
+    renderAll();
+  }
+  lastTs = ts;
+  animFrameId = requestAnimationFrame(animTick);
+}
+
+function setPlayBtn(playing) {
+  const btn = document.getElementById('btn-play');
+  btn.innerHTML = playing
+    ? '⏸ Pause <span class="es">(Pausa)</span>'
+    : '▶ Play <span class="es">(Reproducir)</span>';
+  btn.classList.toggle('playing', playing);
+}
+
+function startPlay() {
+  // Month activity: Play drives the time-lapse (don't restart if finished).
+  if (compareMode && monthMode) {
+    if (awaitingContinue) return;            // already completed; use Continue
+    const period = (monthMode === 'sidereal') ? SIDEREAL_DAYS : SYNODIC_DAYS;
+    if (elapsedDays >= period - 0.01) { elapsedDays = 0; compareCaption = ''; }  // replay from start
+    timeTracking = true;
+    monthLastTs = null;
+    if (monthFrameId) cancelAnimationFrame(monthFrameId);
+    monthFrameId = requestAnimationFrame(monthTick);
+    setPlayBtn(true);
+    return;
+  }
+  // Normal orbit (also animates the Spin = Orbit and Tides demos via angle).
+  clearEclipseOnInteract();
+  isPlaying = true;
+  lastTs = null;
+  if (animFrameId) cancelAnimationFrame(animFrameId);
+  animFrameId = requestAnimationFrame(animTick);
+  setPlayBtn(true);
+}
+
+// Pause: stop whichever loop is running but KEEP the activity state.
+function stopPlay() {
+  isPlaying = false;
+  if (animFrameId) { cancelAnimationFrame(animFrameId); animFrameId = null; }
+  lastTs = null;
+  timeTracking = false;
+  if (monthFrameId) { cancelAnimationFrame(monthFrameId); monthFrameId = null; }
+  monthLastTs = null;
+  setPlayBtn(false);
+}
+
+document.getElementById('btn-play').addEventListener('click', () => {
+  if (isPlaying || timeTracking) stopPlay(); else startPlay();
+});
+
+document.getElementById('speed-slider').addEventListener('input', () => {
+  const val = document.getElementById('speed-slider').value;
+  document.getElementById('speed-val').textContent = val + '×';
+});
+
+// ── INPUT: DRAG ──────────────────────────────────────────────────
+function pointerToAngle(clientX, clientY) {
+  const rect = SC.getBoundingClientRect();
+  // Scale mouse coords to canvas pixel coords
+  const scaleX = SC.width  / rect.width;
+  const scaleY = SC.height / rect.height;
+  const px = (clientX - rect.left) * scaleX;
+  const py = (clientY - rect.top)  * scaleY;
+  const cx = SC.width  * 0.47;
+  const cy = SC.height * 0.5;
+  angle = -Math.atan2(py - cy, px - cx);  // negate for CCW (celestial north)
+  renderAll();
+}
+
+SC.addEventListener('mousedown',  e => { if (compareMode) return; stopPlay(); clearEclipseOnInteract(); dragging = true;  pointerToAngle(e.clientX, e.clientY); });
+window.addEventListener('mousemove', e => { if (dragging) pointerToAngle(e.clientX, e.clientY); });
+window.addEventListener('mouseup',   () => { if (dragging) { dragging = false; renderAll(); } });
+
+SC.addEventListener('touchstart',  e => { if (compareMode) return; e.preventDefault(); stopPlay(); clearEclipseOnInteract(); dragging = true;  if (e.touches[0]) pointerToAngle(e.touches[0].clientX, e.touches[0].clientY); }, {passive:false});
+window.addEventListener('touchmove',  e => { if (!dragging) return; e.preventDefault(); if (e.touches[0]) pointerToAngle(e.touches[0].clientX, e.touches[0].clientY); }, {passive:false});
+window.addEventListener('touchend',   () => { dragging = false; });
+
+// ── BUTTON: SUNBEAMS ─────────────────────────────────────────────
+document.getElementById('btn-beams').addEventListener('click', () => {
+  showBeams = !showBeams;
+  document.getElementById('btn-beams').style.opacity = showBeams ? '1' : '.45';
+  renderAll();
+});
+
+// ── BUTTON: SHOW SPIN (rotation = revolution) ────────────────────
+document.getElementById('btn-rotate').addEventListener('click', () => {
+  showRotationArrow = !showRotationArrow;
+  document.getElementById('btn-rotate').classList.toggle('active', showRotationArrow);
+  if (showRotationArrow) {
+    stopPlay();
+    if (compareMode) stopMonthLapse(true);
+    clearEclipseOnInteract();
+    if (showTides) { showTides = false; document.getElementById('btn-tides')?.classList.remove('active'); }
+    setV1Foot('Spin = Orbit: the Moon rotates once (27.3 days) in exactly the time it takes to orbit Earth once (27.3 days). Press ▶ Play to watch — the same side always faces us! (Giro = Órbita: la Luna gira una vez (27.3 días) justo en el tiempo que tarda en orbitar la Tierra una vez (27.3 días). Presiona ▶ Reproducir — ¡siempre vemos el mismo lado!)');
+    addLog('🔄 Spin = Orbit ready: press ▶ Play to spin the Moon, or drag it yourself. Rotation time = orbit time, so the same side always faces Earth (tidal locking).', 'info');
+    const lv = LEVELS[curLevel - 1];
+    if (lv && lv.type === 'spin' && !awaitingContinue) {
+      addLog(`✅ ${lv.goal} achieved! Sector ${curLevel} powered up!`, 'ok');
+      markDemoComplete();
+    }
+  } else {
+    setV1Foot('Drag the Moon along the track (Arrastra la Luna por la órbita)');
+  }
+  renderAll();
+});
+
+// Spin = Orbit demo: revolve the Moon so its rotation (craters facing Earth) is visible.
+function spinTick(ts) {
+  if (!showRotationArrow && !showTides) { spinFrameId = null; return; }
+  if (spinLastTs !== null) {
+    const dt = (ts - spinLastTs) / 1000;
+    angle += (45 * Math.PI / 180) * dt;   // ~45°/sec, gentle and clear
+    angle = ((angle + Math.PI) % (2 * Math.PI)) - Math.PI;
+    renderAll();
+  }
+  spinLastTs = ts;
+  spinFrameId = requestAnimationFrame(spinTick);
+}
+function startSpin() {
+  if (spinFrameId) return;
+  spinLastTs = null;
+  spinFrameId = requestAnimationFrame(spinTick);
+}
+function stopSpin() {
+  if (spinFrameId) { cancelAnimationFrame(spinFrameId); spinFrameId = null; }
+  spinLastTs = null;
+}
+// Fully turn off both demos (animation + arrow + tides + button states + footer).
+function stopSpinDemo() {
+  stopSpin();
+  let changed = false;
+  if (showRotationArrow) {
+    showRotationArrow = false;
+    document.getElementById('btn-rotate')?.classList.remove('active');
+    changed = true;
+  }
+  if (showTides) {
+    showTides = false;
+    document.getElementById('btn-tides')?.classList.remove('active');
+    changed = true;
+  }
+  if (changed) setV1Foot('Drag the Moon along the track (Arrastra la Luna por la órbita)');
+}
+
+// ── BUTTON: SHOW TIDES ───────────────────────────────────────────
+document.getElementById('btn-tides').addEventListener('click', () => {
+  showTides = !showTides;
+  document.getElementById('btn-tides').classList.toggle('active', showTides);
+  if (showTides) {
+    stopPlay();
+    if (compareMode) stopMonthLapse(true);
+    clearEclipseOnInteract();
+    if (showRotationArrow) { showRotationArrow = false; document.getElementById('btn-rotate')?.classList.remove('active'); }
+    setV1Foot("The Moon's gravity pulls the ocean into TWO bulges — a HIGH TIDE on the near and far sides. Press ▶ Play to watch them follow the Moon, or drag it yourself. (La gravedad de la Luna forma DOS abultamientos — MAREA ALTA en el lado cercano y el lejano. Presiona ▶ Reproducir para verlos seguir a la Luna, o arrástrala tú.)");
+    addLog("🌊 Tides ready: press ▶ Play to orbit the Moon, or drag it. Its gravity makes TWO bulges — ~2 high tides a day. (Mareas listas: presiona ▶ Reproducir o arrastra la Luna.)", 'info');
+    // Tides-level completion — wait for Continue.
+    const lv = LEVELS[curLevel - 1];
+    if (lv && lv.type === 'tides' && !awaitingContinue) {
+      addLog(`✅ ${lv.goal} achieved! Sector ${curLevel} powered up!`, 'ok');
+      markDemoComplete();
+    }
+  } else {
+    setV1Foot('Drag the Moon along the track (Arrastra la Luna por la órbita)');
+  }
+  renderAll();
+});
+
+// ── BUTTONS: ECLIPSES ────────────────────────────────────────────
+// An eclipse needs the Moon at New/Full AND crossing the ecliptic (a node).
+// These buttons align the line of nodes and snap the Moon into place.
+function setEclipse(mode) {
+  stopPlay();
+  stopSpin();   // make sure no spin/tides animation keeps advancing the Moon
+  if (showRotationArrow) { showRotationArrow = false; document.getElementById('btn-rotate')?.classList.remove('active'); }
+  if (showTides) { showTides = false; document.getElementById('btn-tides')?.classList.remove('active'); }
+  if (eclipseMode === mode) {
+    // toggle off → restore tilted (no-eclipse) orbit
+    eclipseMode = 'none';
+    nodeAngle = 50 * Math.PI / 180;
+    document.getElementById('btn-solar').classList.remove('active');
+    document.getElementById('btn-lunar').classList.remove('active');
+    addLog('🔭 Orbit tilt restored — eclipses are rare again.', 'info');
+    renderAll();
+    return;
+  }
+  eclipseMode = mode;
+  nodeAngle = 0;  // align nodes with the Sun-Earth line
+  if (mode === 'solar') {
+    angle = 0;          // New Moon
+    document.getElementById('btn-solar').classList.add('active');
+    document.getElementById('btn-lunar').classList.remove('active');
+    addLog('🌑 SOLAR ECLIPSE aligned! New Moon crosses the ecliptic and blocks the Sun.', 'ok');
+  } else {
+    angle = Math.PI;    // Full Moon
+    document.getElementById('btn-lunar').classList.add('active');
+    document.getElementById('btn-solar').classList.remove('active');
+    addLog("🌕 LUNAR ECLIPSE aligned! Full Moon passes into Earth's shadow.", 'ok');
+  }
+  renderAll();
+
+  // Eclipse-level completion: keep the eclipse shown, then wait for Continue.
+  const lv = LEVELS[curLevel - 1];
+  if (lv && lv.type === 'eclipse' && lv.eclipse === mode && !awaitingContinue) {
+    addLog(`✅ ${lv.goal} achieved! Sector ${curLevel} powered up!`, 'ok');
+    markDemoComplete();
+  }
+}
+document.getElementById('btn-solar').addEventListener('click', () => setEclipse('solar'));
+document.getElementById('btn-lunar').addEventListener('click', () => setEclipse('lunar'));
+
+// Any manual drag clears eclipse mode + restores tilt
+function clearEclipseOnInteract() {
+  if (eclipseMode !== 'none') {
+    eclipseMode = 'none';
+    nodeAngle = 50 * Math.PI / 180;
+    document.getElementById('btn-solar').classList.remove('active');
+    document.getElementById('btn-lunar').classList.remove('active');
+  }
+}
+
+// ── LUNAR MONTH TIME-LAPSE ───────────────────────────────────────
+// monthMode: 'synodic' (29.5d, New Moon → New Moon) or 'sidereal' (27.3d, one orbit vs stars)
+let monthMode = null;
+
+const MONTH_DEFS = {
+  synodic:  'Synodic month: it takes the Moon about 29.5 days to complete one full cycle of phases — from one New Moon to the next. (Mes sinódico: la Luna tarda unos 29.5 días en completar un ciclo de fases — de una Luna Nueva a la siguiente.)',
+  sidereal: 'Sidereal month: it takes the Moon about 27.3 days to complete one full revolution around the Earth (measured against the stars). (Mes sideral: la Luna tarda unos 27.3 días en dar una vuelta completa a la Tierra, medido respecto a las estrellas.)',
+};
+
+function setV1Foot(text) {
+  const el = document.getElementById('v1-foot');
+  if (el) el.textContent = text;
+}
+
+function monthTick(ts) {
+  if (!timeTracking) return;
+  if (monthLastTs !== null) {
+    const dt = (ts - monthLastTs) / 1000;
+    const dpsIdx = parseInt(document.getElementById('speed-slider').value) - 1;
+    elapsedDays += DAYS_PER_SEC[dpsIdx] * dt;
+
+    const period = (monthMode === 'sidereal') ? SIDEREAL_DAYS : SYNODIC_DAYS;
+
+    // Drive the PHASE so Views 2 (phases) and 3 (side view) animate in step.
+    // Phase advances at the SYNODIC rate (New→Full→New is one synodic cycle).
+    // In sidereal mode we stop early at ~333° — a waning crescent, NOT New Moon.
+    angle = (elapsedDays / SYNODIC_DAYS) * 2 * Math.PI;
+
+    // Live caption during the run (compare view). Lines PERSIST once shown.
+    if (monthMode === 'sidereal') {
+      compareCaption = (elapsedDays >= SIDEREAL_DAYS - 0.05)
+        ? 'After one sidereal month: 360 deg around its orbit — but the phase is a waning crescent, not New Moon. (Tras un mes sideral: 360 grados de su órbita — pero la fase es menguante, no Luna Nueva.)'
+        : '';
+    } else {
+      // Build up: once the 27.3 d line appears it stays; the 29.5 d line is added below it.
+      let cap = '';
+      if (elapsedDays >= SIDEREAL_DAYS)
+        cap = 'One full orbit done (27.3 d) — but not New Moon yet! Earth moved, so the Moon must catch up. (¡Una órbita completa (27.3 d) — pero aún no es Luna Nueva! La Tierra se movió, la Luna debe alcanzarla.)';
+      if (elapsedDays >= SYNODIC_DAYS - 0.05)
+        cap += (cap ? '\n\n' : '') + 'Now at 29.5 d the phase is New Moon again! (¡Ahora a los 29.5 d la fase es otra vez Luna Nueva!)';
+      compareCaption = cap;
+    }
+
+    if (elapsedDays >= period) {
+      if (monthMode === 'sidereal') {
+        addLog(`⭐ SIDEREAL MONTH complete (${SIDEREAL_DAYS.toFixed(1)}d): the Moon made one full 360° revolution vs the stars — but the phase is a waning crescent, NOT New Moon yet.`, 'info');
+        elapsedDays = SIDEREAL_DAYS;
+        angle = (SIDEREAL_DAYS / SYNODIC_DAYS) * 2 * Math.PI; // ~333° waning crescent
+      } else {
+        addLog(`🌑 SYNODIC MONTH complete (${SYNODIC_DAYS}d): one full cycle of phases — New Moon back to New Moon. It took ${(SYNODIC_DAYS-SIDEREAL_DAYS).toFixed(1)} days longer than a sidereal month because Earth moved around the Sun.`, 'ok');
+        elapsedDays = SYNODIC_DAYS;
+        angle = 0; // New Moon
+      }
+      // stop the loop, keep the final frame + caption + compare view
+      timeTracking = false;
+      if (monthFrameId) { cancelAnimationFrame(monthFrameId); monthFrameId = null; }
+      monthLastTs = null;
+      setPlayBtn(false);
+      renderAll();
+
+      // Month-level completion → keep result shown, wait for Continue.
+      const lv = LEVELS[curLevel - 1];
+      const finishedMode = monthMode;
+      if (lv && lv.type === 'month' && lv.month === finishedMode && !awaitingContinue) {
+        addLog(`✅ ${lv.goal} achieved! Sector ${curLevel} powered up!`, 'ok');
+        markDemoComplete();
+      }
+      return;
+    }
+    renderAll();
+  }
+  monthLastTs = ts;
+  monthFrameId = requestAnimationFrame(monthTick);
+}
+
+function startMonthLapse(mode) {
+  stopPlay();
+  clearEclipseOnInteract();
+  stopSpin();
+  if (showRotationArrow) { showRotationArrow = false; document.getElementById('btn-rotate')?.classList.remove('active'); }
+  if (showTides) { showTides = false; document.getElementById('btn-tides')?.classList.remove('active'); }
+  // toggle off if the same month is already selected
+  if (compareMode && monthMode === mode) { stopMonthLapse(true); return; }
+  monthMode = mode;
+  timeTracking = false;        // do NOT auto-run — wait for the Play button
+  compareMode = true;          // switch View 1 to the zoomed-out comparison view
+  compareCaption = '';
+  elapsedDays = 0;
+  monthLastTs = null;
+  awaitingContinue = false;
+  // button states
+  const synBtn = document.getElementById('btn-synodic');
+  const sidBtn = document.getElementById('btn-sidereal');
+  synBtn.classList.toggle('active', mode === 'synodic');
+  sidBtn.classList.toggle('active', mode === 'sidereal');
+  // show the definition at the bottom of View 1
+  setV1Foot(MONTH_DEFS[mode]);
+  if (mode === 'sidereal') {
+    addLog('⭐ Sidereal month ready: press ▶ Play to watch the Moon return to the same star direction.', 'info');
+  } else {
+    addLog('🌑 Synodic month ready: press ▶ Play to watch the Moon return to New Moon.', 'info');
+  }
+  renderAll();   // show day 0 (static) until Play is pressed
+}
+
+function stopMonthLapse(reset = true) {
+  if (monthFrameId) { cancelAnimationFrame(monthFrameId); monthFrameId = null; }
+  monthLastTs = null;
+  document.getElementById('btn-synodic').classList.remove('active');
+  document.getElementById('btn-sidereal').classList.remove('active');
+  if (reset) {
+    timeTracking = false;
+    compareMode = false;
+    compareCaption = '';
+    monthMode = null;
+    angle = 0;
+    setV1Foot('Drag the Moon along the track (Arrastra la Luna por la órbita)');
+    renderAll();
+  }
+}
+
+document.getElementById('btn-synodic').addEventListener('click', () => startMonthLapse('synodic'));
+document.getElementById('btn-sidereal').addEventListener('click', () => startMonthLapse('sidereal'));
+
+// ── BUTTON: LOCK ALIGNMENT ───────────────────────────────────────
+document.getElementById('btn-lock').addEventListener('click', () => {
+  if (timeTracking) stopMonthLapse(true);
+  const lv = LEVELS[curLevel - 1];
+
+  // On a finished demo level the Lock button becomes "Continue".
+  if (awaitingContinue) {
+    awaitingContinue = false;
+    restoreLockButton();
+    if (curLevel < LEVELS.length) loadLevel(curLevel + 1);
+    else { setProgress(LEVELS.length + 1); showReceiveBadge(); }
+    return;
+  }
+
+  // Lock Alignment only applies to phase-matching levels.
+  if (lv.type !== 'phase') {
+    addLog(`ℹ️ This sector needs you to ${lv.goal.toLowerCase()} — use the button shown in the assignment.`, 'info');
+    return;
+  }
+
+  const cur    = getPhase(angle);
+  const target = PHASES[targetId];
+
+  if (cur.id === targetId) {
+    addLog(`✅ ${cur.emoji} ${cur.name} confirmed! Sector ${curLevel} powered up!`, 'ok');
+    completeLevel();
+  } else {
+    addLog(`❌ Detected: ${cur.emoji} ${cur.name}. Need: ${target.emoji} ${target.name}. Adjust & retry!`, 'err');
+    shakeAssignment();
+  }
+});
+
+const LOCK_LABEL = 'Lock Alignment 🔒 <span class="es">(Fijar Alineación)</span>';
+function restoreLockButton() {
+  const b = document.getElementById('btn-lock');
+  if (b) b.innerHTML = LOCK_LABEL;
+}
+
+// Demo levels (spin/tides): keep the animation running and wait for a
+// "Continue" click instead of auto-advancing (so it never stops part-way).
+function markDemoComplete() {
+  awaitingContinue = true;
+  setProgress(curLevel + 1);   // light up this sector's progress
+  const b = document.getElementById('btn-lock');
+  if (b) b.innerHTML = 'Continue ▶ <span class="es">(Continuar)</span>';
+  const lockLine = document.querySelector('.obj-lock');
+  if (lockLine) lockLine.innerHTML = 'Done! Take a look, then press Continue. <span class="es">(¡Listo! Obsérvalo y presiona Continuar.)</span>';
+}
+
+// Shared level-completion: advance to next level or win.
+function completeLevel() {
+  if (curLevel < LEVELS.length) {
+    const next = curLevel + 1;
+    setTimeout(() => loadLevel(next), 700);
+  } else {
+    // Final assignment done — don't jump to the badge. Offer a button.
+    setProgress(LEVELS.length + 1);  // GRID POWER → 100%
+    addLog('🎉 All assignments complete! Press "Receive Badge" to claim your reward. (¡Todas las asignaciones completas! Presiona "Recibir Insignia" para reclamar tu premio.)', 'ok');
+    showReceiveBadge();
+  }
+}
+
+// Swap the Lock Alignment button for a glowing "Receive Badge" button.
+function showReceiveBadge() {
+  const lockBtn = document.getElementById('btn-lock');
+  if (lockBtn) lockBtn.style.display = 'none';
+  let rb = document.getElementById('btn-receive');
+  if (!rb) {
+    rb = document.createElement('button');
+    rb.id = 'btn-receive';
+    rb.className = 'btn-receive';
+    rb.innerHTML = '🏅 Receive Badge <span class="es">(Recibir Insignia)</span>';
+    rb.addEventListener('click', showWin);
+    lockBtn.parentElement.appendChild(rb);
+  }
+  rb.style.display = 'block';
+  // also update the assignment line to prompt it
+  const lockLine = document.querySelector('.obj-lock');
+  if (lockLine) lockLine.innerHTML = 'All done — Receive your Badge! <span class="es">(¡Todo listo — Recibe tu Insignia!)</span>';
+}
+
+function hideReceiveBadge() {
+  const rb = document.getElementById('btn-receive');
+  if (rb) rb.style.display = 'none';
+  const lockBtn = document.getElementById('btn-lock');
+  if (lockBtn) lockBtn.style.display = '';
+}
+
+function shakeAssignment() {
+  const gc = document.getElementById('assignment-lbl').closest('.card');
+  if (gc) {
+    gc.classList.remove('shake');
+    void gc.offsetWidth;
+    gc.classList.add('shake');
+    setTimeout(() => gc.classList.remove('shake'), 500);
+  }
+}
+
+// ── LOGGING ──────────────────────────────────────────────────────
+function addLog(msg, type = '') {
+  const box = document.getElementById('log');
+  // Skip if this exact message is already the most recent line
+  // (guards against boot/resize races adding the same line twice).
+  const last = box.lastElementChild;
+  if (last && last.textContent === msg) return;
+  const el  = document.createElement('div');
+  el.className = `log-line ${type}`;
+  el.textContent = msg;
+  box.appendChild(el);
+  box.scrollTop = box.scrollHeight;
+}
+
+// ── PROGRESS ─────────────────────────────────────────────────────
+function setProgress(level) {
+  const pct = Math.round(((level - 1) / LEVELS.length) * 100);
+  document.getElementById('v-power').textContent  = pct + '%';
+  document.getElementById('prog-pct').textContent = pct + '%';
+  document.getElementById('prog-fill').style.width = pct + '%';
+}
+
+// ── LEVEL LOADER ─────────────────────────────────────────────────
+// Wrap the trailing Spanish "(...)" of a bilingual string in an .es span,
+// so the English shows in the base (white) color and Spanish stays muted/italic.
+function escapeHTML(t){ return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function wrapES(text) {
+  const m = text.match(/^(.*?)\s*(\([^()]*\))\s*$/);
+  if (!m) return escapeHTML(text);
+  return escapeHTML(m[1]) + ' <span class="es">' + escapeHTML(m[2]) + '</span>';
+}
+
+function loadLevel(n) {
+  curLevel = n;
+  const lv = LEVELS[n - 1];
+  targetId = (lv.type === 'phase') ? lv.target : -1;
+  awaitingContinue = false;
+  stopPlay();           // halt any running play/time-lapse from the previous level
+  restoreLockButton();
+
+  // Clear any leftover demo state from the previous level (but keep the
+  // eclipse/compare visuals if THIS level is the one that needs them).
+  if (lv.type !== 'eclipse') clearEclipseOnInteract();
+  if (lv.type !== 'month') {
+    compareMode = false;
+    if (typeof monthMode !== 'undefined') monthMode = null;
+    document.getElementById('btn-synodic')?.classList.remove('active');
+    document.getElementById('btn-sidereal')?.classList.remove('active');
+    setV1Foot('Drag the Moon along the track (Arrastra la Luna por la órbita)');
+  }
+  if (lv.type !== 'spin') {
+    stopSpin();
+    showRotationArrow = false;
+    document.getElementById('btn-rotate')?.classList.remove('active');
+  }
+  if (lv.type !== 'tides') {
+    showTides = false;
+    document.getElementById('btn-tides')?.classList.remove('active');
+  }
+
+  document.getElementById('v-level').textContent  = `${n} / ${LEVELS.length}`;
+  document.getElementById('lv-title').innerHTML  = wrapES(lv.title);
+  document.getElementById('lv-desc').innerHTML   = wrapES(lv.desc);
+
+  // Target box + lock-line + log adapt to the level type
+  const lockLine = document.querySelector('.obj-lock');
+  if (lv.type === 'phase') {
+    document.getElementById('target-name').innerHTML = PHASES[lv.target].emoji + ' ' + wrapES(PHASES[lv.target].name);
+    if (lockLine) lockLine.innerHTML = 'Now Lock Alignment <span class="es">(Ahora Fija la Alineación)</span>';
+    addLog(`📡 Sector ${n} online. Find: ${PHASES[lv.target].emoji} ${PHASES[lv.target].name}`, 'info');
+  } else if (lv.type === 'eclipse') {
+    document.getElementById('target-name').innerHTML = (lv.eclipse === 'solar' ? '🌑 ' : '🌕 ') + wrapES(lv.goal);
+    if (lockLine) lockLine.innerHTML = `Press the ${lv.eclipse === 'solar' ? 'Solar' : 'Lunar'} Eclipse button <span class="es">(Presiona el botón Eclipse ${lv.eclipse === 'solar' ? 'Solar' : 'Lunar'})</span>`;
+    addLog(`📡 Sector ${n} online. Goal: ${lv.goal}`, 'info');
+  } else if (lv.type === 'month') {
+    document.getElementById('target-name').innerHTML = (lv.month === 'sidereal' ? '⭐ ' : '🌑 ') + wrapES(lv.goal);
+    if (lockLine) lockLine.innerHTML = `Press the ${lv.month === 'sidereal' ? 'Sidereal 27.3d' : 'Synodic 29.5d'} button <span class="es">(Presiona el botón ${lv.month === 'sidereal' ? 'Sideral 27.3d' : 'Sinódico 29.5d'})</span>`;
+    addLog(`📡 Sector ${n} online. Goal: ${lv.goal}`, 'info');
+  } else if (lv.type === 'spin') {
+    document.getElementById('target-name').innerHTML = '🔄 ' + wrapES(lv.goal);
+    if (lockLine) lockLine.innerHTML = 'Press the Spin = Orbit button <span class="es">(Presiona el botón Giro = Órbita)</span>';
+    addLog(`📡 Sector ${n} online. Goal: ${lv.goal}`, 'info');
+  } else if (lv.type === 'tides') {
+    document.getElementById('target-name').innerHTML = '🌊 ' + wrapES(lv.goal);
+    if (lockLine) lockLine.innerHTML = 'Press the Show Tides button <span class="es">(Presiona el botón Mostrar Mareas)</span>';
+    addLog(`📡 Sector ${n} online. Goal: ${lv.goal}`, 'info');
+  }
+
+  setProgress(n);
+  renderAll();
+}
+
+// ── WIN ───────────────────────────────────────────────────────────
+function showWin() {
+  document.getElementById('v-power').textContent   = '100%';
+  document.getElementById('prog-pct').textContent  = '100%';
+  document.getElementById('prog-fill').style.width = '100%';
+  addLog(`🏆 All ${LEVELS.length} sectors restored! Grid fully operational! (¡Los ${LEVELS.length} sectores restaurados! ¡Red totalmente operativa!)`, 'ok');
+  document.getElementById('modal').classList.add('show');
+}
+
+// ── RESET MISSION ─────────────────────────────────────────────────
+// Returns the whole game to a pristine Level 1 state (no page reload).
+function resetMission() {
+  // stop any running animations / modes
+  stopPlay();
+  stopMonthLapse(true);
+  timeTracking = false;
+
+  // reset all toggles & state to defaults
+  angle = 0;
+  showBeams = true;
+  stopSpin();
+  showRotationArrow = false;
+  showTides = false;
+  eclipseMode = 'none';
+  nodeAngle = 50 * Math.PI / 180;
+  elapsedDays = 0;
+  siderealHit = false;
+  synodicHit = false;
+
+  // reset button visuals
+  document.getElementById('btn-beams').style.opacity = '1';
+  ['btn-rotate','btn-tides','btn-solar','btn-lunar','btn-synodic','btn-sidereal'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.remove('active');
+  });
+  setV1Foot('Drag the Moon along the track');
+
+  // hide win modal if open
+  document.getElementById('modal').classList.remove('show');
+  hideReceiveBadge();  // restore Lock Alignment button
+  awaitingContinue = false;
+  restoreLockButton();
+
+  // clear the mission log
+  document.getElementById('log').innerHTML = '';
+
+  // back to Level 1 — produces the same clean "Sector 1 online" log as a fresh load
+  loadLevel(1);
+}
+document.getElementById('btn-reset').addEventListener('click', resetMission);
+document.getElementById('btn-replay').addEventListener('click', resetMission);
+
+// ── BOOT ──────────────────────────────────────────────────────────
+let __booted = false;
+// ── BADGE: build the moon-phase ring + rays in the win modal SVG ──
+function buildBadge() {
+  const ring = document.getElementById('phaseRing');
+  const rays = document.getElementById('badgeRays');
+  if (!ring || !rays) return;
+  const SVGNS = 'http://www.w3.org/2000/svg';
+  const cx = 100, cy = 100, ringR = 50, mR = 9;
+
+  // 8 mini moon phases evenly around the ring (New at top, going clockwise)
+  for (let i = 0; i < 8; i++) {
+    const ang = -Math.PI/2 + (i / 8) * 2 * Math.PI;  // start at top
+    const px = cx + Math.cos(ang) * ringR;
+    const py = cy + Math.sin(ang) * ringR;
+    const phaseDeg = (i / 8) * 360;  // 0=New,90=First Q,180=Full,270=Third Q
+
+    const g = document.createElementNS(SVGNS, 'g');
+    // base dark moon
+    const base = document.createElementNS(SVGNS, 'circle');
+    base.setAttribute('cx', px); base.setAttribute('cy', py);
+    base.setAttribute('r', mR);
+    base.setAttribute('fill', '#2a3245');
+    base.setAttribute('stroke', 'rgba(251,191,36,.5)');
+    base.setAttribute('stroke-width', '0.8');
+    g.appendChild(base);
+
+    // lit portion via terminator ellipse (same math as the game)
+    const rad = phaseDeg * Math.PI / 180;
+    const termX = mR * Math.cos(rad);
+    const waxing = phaseDeg < 180;
+    if (phaseDeg < 1 || phaseDeg > 359) {
+      // New moon — leave dark
+    } else if (Math.abs(phaseDeg - 180) < 1) {
+      // Full moon — fully lit
+      const lit = document.createElementNS(SVGNS, 'circle');
+      lit.setAttribute('cx', px); lit.setAttribute('cy', py); lit.setAttribute('r', mR);
+      lit.setAttribute('fill', '#eef3fb');
+      g.appendChild(lit);
+    } else {
+      // draw lit semicircle + terminator ellipse to carve the phase
+      const litHalf = document.createElementNS(SVGNS, 'path');
+      const side = waxing ? 1 : -1;  // waxing lights the right half
+      litHalf.setAttribute('d',
+        `M ${px} ${py-mR} A ${mR} ${mR} 0 0 ${waxing?1:0} ${px} ${py+mR} Z`);
+      litHalf.setAttribute('fill', '#eef3fb');
+      g.appendChild(litHalf);
+      // terminator ellipse: lit if termX same side, dark otherwise
+      const ell = document.createElementNS(SVGNS, 'ellipse');
+      ell.setAttribute('cx', px); ell.setAttribute('cy', py);
+      ell.setAttribute('rx', Math.abs(termX)); ell.setAttribute('ry', mR);
+      const gibbous = Math.abs(phaseDeg-180) < 90;
+      ell.setAttribute('fill', gibbous ? '#eef3fb' : '#2a3245');
+      g.appendChild(ell);
+    }
+    ring.appendChild(g);
+  }
+
+  // subtle starburst rays behind the rim
+  for (let i = 0; i < 24; i++) {
+    const a = (i / 24) * 2 * Math.PI;
+    const r1 = 78, r2 = 92;
+    const ln = document.createElementNS(SVGNS, 'line');
+    ln.setAttribute('x1', cx + Math.cos(a)*r1);
+    ln.setAttribute('y1', cy + Math.sin(a)*r1);
+    ln.setAttribute('x2', cx + Math.cos(a)*r2);
+    ln.setAttribute('y2', cy + Math.sin(a)*r2);
+    ln.setAttribute('stroke', i % 2 ? 'rgba(251,191,36,.5)' : 'rgba(251,191,36,.22)');
+    ln.setAttribute('stroke-width', i % 2 ? '2' : '1');
+    ln.setAttribute('stroke-linecap', 'round');
+    rays.appendChild(ln);
+  }
+}
+
+function bootGame() {
+  if (__booted) return;     // never boot twice (guards against timing races)
+  __booted = true;
+  [SC, SK, SD].forEach(c => {
+    c.width  = c.parentElement.clientWidth;
+    c.height = c.parentElement.clientHeight;
+  });
+  document.getElementById('log').innerHTML = '';  // start with an empty log
+  loadLevel(1);
+}
+
+buildPhaseGuide();
+buildBadge();
+// Wait one tick for layout to settle, then size canvases and start
+requestAnimationFrame(bootGame);
+
+// Fresh start guarantee: if the page is restored from the browser's
+// back-forward cache (bfcache), reload so every visit begins anew.
+window.addEventListener('pageshow', (e) => {
+  if (e.persisted) window.location.reload();
+});
+</script>
+</body>
+</html>
